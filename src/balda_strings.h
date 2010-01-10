@@ -1,0 +1,13 @@
+#ifndef __BALDA_STRINGS__H__
+#define __BALDA_STRINGS__H__
+
+typedef enum
+{
+	BALDA_STR_DEFAULT_PLAYER_NAME_0,
+	BALDA_STR_DEFAULT_PLAYER_NAME_1,
+	BALDA_STR_DEFAULT_AI_PLAYER_NAME,
+} BALDA_STRING_ID;
+
+const char* balda_string(BALDA_STRING_ID);
+
+#endif
