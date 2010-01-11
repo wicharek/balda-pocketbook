@@ -20,8 +20,8 @@ if errorlevel 1 goto L_ER
 gcc -static -Wall -O2 -fomit-frame-pointer %INCLUDE% -o %OUTPUT% src/*.c %IMAGES% %LIBS%
 if errorlevel 1 goto L_ER
 
-rem exit 0
+exit 0
 
 :L_ER
-rem exit 1
-
+pause
+exit 1

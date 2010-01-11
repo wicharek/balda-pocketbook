@@ -21,8 +21,8 @@ gcc -Wall -O2 -fomit-frame-pointer %INCLUDE% -I./src -o %OUTPUT% src/*.c %IMAGES
 if errorlevel 1 goto L_ER
 strip %OUTPUT%
 
-exit 0
+rem exit 0
 
 :L_ER
-exit 1
+rem exit 1
 

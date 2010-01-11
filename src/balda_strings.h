@@ -3,11 +3,17 @@
 
 typedef enum
 {
-	BALDA_STR_DEFAULT_PLAYER_NAME_0,
-	BALDA_STR_DEFAULT_PLAYER_NAME_1,
-	BALDA_STR_DEFAULT_AI_PLAYER_NAME,
+	#define BALDA_STRING(name, value) name,
+	#include "balda_strings.inl"
+	#undef BALDA_STRING
 } BALDA_STRING_ID;
 
 const char* balda_string(BALDA_STRING_ID);
+
+#define BALDA_STRING_DEFINE_MACROS
+#define BALDA_STRING(name, value)
+#include "balda_strings.inl"
+#undef BALDA_STRING_DEFINE_MACROS
+#undef BALDA_STRING
 
 #endif
