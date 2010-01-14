@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include "balda_view.h"
-#include "balda_utils.h"
+#include "balda_cancel_button.h"
 
 #define BALDA_MAX_SEQUENCE (BALDA_FIELD_WIDTH*BALDA_FIELD_HEIGHT)
 
@@ -37,6 +37,7 @@ const int BALDA_VIEW_SCORE_PANEL_HEIGHT = 54;
 
 extern const ibitmap img_logo;
 extern const ibitmap img_turn_mark;
+extern const ibitmap img_icon_back;
 
 struct balda_view_t_impl
 {
@@ -65,6 +66,8 @@ struct balda_view_t_impl
 	balda_bool keyboard_selected;
 	balda_point_t keyboard_pos;
 	
+	balda_cancel_button_t btn_cancel;
+	
 	balda_int_converter_t int_conv;
 };
 
@@ -89,7 +92,7 @@ balda_view_t* balda_view_init(balda_t* balda)
 	view->balda = balda;
 	
 	view->font_version = OpenFont("LiberationSans", 11, 0);
-	view->font_player_name = OpenFont("LiberationSans", 14, 1);
+	view->font_player_name = OpenFont("LiberationSans", 16, 0);
 	view->font_score_panel = OpenFont("LiberationSans-Bold", 36, 1);
 	view->font_field = OpenFont("LiberationSans-Bold", 24, 0);
 	view->font_keyboard = OpenFont("LiberationSans-Bold", 28, 0);
@@ -100,6 +103,9 @@ balda_view_t* balda_view_init(balda_t* balda)
 		- BALDA_VIEW_FIELD_CELL_PADDING * (BALDA_FIELD_WIDTH - 1)) / 2;
 	view->keyboard_left = (ScreenWidth() - BALDA_VIEW_KEYBOARD_CELL_W * BALDA_VIEW_KEYBOARD_W
 		- BALDA_VIEW_KEYBOARD_CELL_PADDING * (BALDA_VIEW_KEYBOARD_W - 1)) / 2;
+	
+	balda_cancel_button_init(&view->btn_cancel,
+		balda_make_point((ScreenWidth() - BALDA_CANCEL_BUTTON_WIDTH) / 2, 438+12));
 	
 	return view;
 }
@@ -116,6 +122,11 @@ void balda_view_free(balda_view_t* view)
 	
 	CloseFont(view->font_version);
 	CloseFont(view->font_player_name);
+	CloseFont(view->font_score_panel);
+	CloseFont(view->font_field);
+	CloseFont(view->font_keyboard);
+	
+	balda_cancel_button_free(&view->btn_cancel);
 	
 	free(view);
 }
@@ -247,6 +258,11 @@ void balda_view_field_invert(balda_view_t* view, int x, int y)
 	PartialUpdateBW(rx, ry, w, h);
 }
 
+balda_bool balda_view_is_cancel_selected(balda_view_t* view)
+{
+	return view->btn_cancel.selected;
+}
+
 balda_point_t balda_view_field_get_selection(balda_view_t* view)
 {
 	return view->field_sel;
@@ -267,27 +283,60 @@ void balda_view_field_clear_selection(balda_view_t* view)
 	switch (view->field_mode)
 	{
 		case BALDA_VIEW_FIELD_SELECT_MODE_SINGLE:
-			balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+		{
+			if (view->field_sel.y == BALDA_FIELD_HEIGHT)
+			{
+				balda_cancel_button_set_selected(&view->btn_cancel, 0);
+				balda_cancel_button_draw(&view->btn_cancel, 1, BALDA_CANCEL_BUTTON_FORCE_REDRAW_NONE);
+			}
+			else
+			{
+				balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+			}
 			view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_NONE;
+		}
 		break;
 		
 		case BALDA_VIEW_FIELD_SELECT_MODE_INSERTING:
-			// TODO
+		{
+			view->field_inserting_char = BALDA_CHAR_NONE;
 			
-			//balda_view_draw_field_entry(view, view->field_sel.x, view->field_sel.y);
-			//view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_NONE;
+			/*balda_view_draw_field_entry(view,
+				balda_view_field_entry_x(view, view->field_sel.x), balda_view_field_entry_y(view, view->field_sel.y),
+				balda_view_get_letter_at(view, view->field_sel.x, view->field_sel.y), BALDA_VIEW_FIELD_ENTRY_NORMAL,
+				0, BALDA_VIEW_FIELD_SEQUENCE_FLAG_NONE);*/
+			view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_NONE;
+		}
 		break;
 	}
 }
 
 void balda_view_field_select_single(balda_view_t* view, balda_point_t point)
 {
+	if (view->field_mode == BALDA_VIEW_FIELD_SELECT_MODE_INSERTING)
+	{
+		FillArea(balda_view_field_entry_x(view, view->field_sel.x)-BALDA_VIEW_FIELD_CELL_PADDING/2,
+			balda_view_field_entry_y(view, view->field_sel.y)-BALDA_VIEW_FIELD_CELL_PADDING/2,
+			BALDA_VIEW_FIELD_CELL_W+BALDA_VIEW_FIELD_CELL_PADDING, BALDA_VIEW_FIELD_CELL_H+BALDA_VIEW_FIELD_CELL_PADDING,
+			WHITE);
+		balda_view_draw_field_entry(view,
+			balda_view_field_entry_x(view, view->field_sel.x), balda_view_field_entry_y(view, view->field_sel.y),
+			balda_view_get_letter_at(view, view->field_sel.x, view->field_sel.y), BALDA_VIEW_FIELD_ENTRY_NORMAL,
+			0, BALDA_VIEW_FIELD_SEQUENCE_FLAG_NONE);
+	}
+	
 	balda_view_field_clear_selection(view);
 	
 	view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_SINGLE;
 	view->field_sel = point;
 	
-	balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+	if (view->field_sel.y != BALDA_FIELD_HEIGHT)
+		balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+	
+	balda_cancel_button_set_visible(&view->btn_cancel, 1);
+	balda_cancel_button_set_mode(&view->btn_cancel, BALDA_CANCEL_BUTTON_MODE_SURRENDER);
+	balda_cancel_button_set_selected(&view->btn_cancel, view->field_sel.y == BALDA_FIELD_HEIGHT);
+	balda_cancel_button_draw(&view->btn_cancel, 1, BALDA_CANCEL_BUTTON_FORCE_REDRAW_NONE);
 }
 
 void balda_view_field_select_single_delta(balda_view_t* view, int dx, int dy)
@@ -295,12 +344,12 @@ void balda_view_field_select_single_delta(balda_view_t* view, int dx, int dy)
 	assert(view->field_mode == BALDA_VIEW_FIELD_SELECT_MODE_SINGLE);
 	
 	balda_point_t pos = balda_make_point((view->field_sel.x + dx) % BALDA_FIELD_WIDTH,
-		(view->field_sel.y + dy) % BALDA_FIELD_HEIGHT);
+		(view->field_sel.y + dy) % (BALDA_FIELD_HEIGHT + 1));
 		
 	if (pos.x < 0)
 		pos.x = BALDA_FIELD_WIDTH + pos.x;
 	if (pos.y < 0)
-		pos.y = BALDA_FIELD_HEIGHT + pos.y;
+		pos.y = (BALDA_FIELD_HEIGHT + 1) + pos.y;
 	
 	balda_view_field_select_single(view, pos);
 }
@@ -616,6 +665,21 @@ void balda_view_keyboard_select_delta(balda_view_t* view, int dx, int dy)
 	}
 }
 
+balda_bool balda_view_keyboard_is_back_selected(balda_view_t* view)
+{
+	assert(view->keyboard);
+	
+	int char_index;
+	
+	if (view->keyboard_selected)
+	{
+		char_index = view->keyboard_pos.x + view->keyboard_pos.y * BALDA_VIEW_KEYBOARD_W;
+		return view->keyboard[char_index] == 0;
+	}
+	
+	return 0;
+}
+
 balda_char balda_view_keyboard_get_selected_char(balda_view_t* view)
 {
 	assert(view->keyboard);
@@ -723,20 +787,31 @@ void balda_view_set_keyboard(balda_view_t* view, const balda_char* keyboard)
 
 void balda_view_draw_keyboard(balda_view_t* view)
 {
-	int x, y = BALDA_VIEW_KEYBOARD_Y, i;
+	int x, y = BALDA_VIEW_KEYBOARD_Y, i, done=0;
 	const balda_char* c = view->keyboard;
 	view->keyboard_h = 0;
 	
 	if (c)
 	{
 		view->keyboard_h = 1;
-		while (*c)
+		while (!done)
 		{
 			x = view->keyboard_left;
-			for (i=0; i<BALDA_VIEW_KEYBOARD_W && *c; ++i, x += (BALDA_VIEW_KEYBOARD_CELL_W + BALDA_VIEW_KEYBOARD_CELL_PADDING), ++c)
+			for (i=0; i<BALDA_VIEW_KEYBOARD_W; ++i, x += (BALDA_VIEW_KEYBOARD_CELL_W + BALDA_VIEW_KEYBOARD_CELL_PADDING), ++c)
 			{
 				DrawRect(x, y, BALDA_VIEW_KEYBOARD_CELL_W, BALDA_VIEW_KEYBOARD_CELL_H, BLACK);
-				balda_view_draw_char(*c, x, y, BALDA_VIEW_KEYBOARD_CELL_W, BALDA_VIEW_KEYBOARD_CELL_H, view->font_keyboard, BLACK);
+				
+				if (*c != 0)
+				{
+					balda_view_draw_char(*c, x, y, BALDA_VIEW_KEYBOARD_CELL_W, BALDA_VIEW_KEYBOARD_CELL_H, view->font_keyboard, BLACK);
+				}
+				else
+				{
+					DrawBitmap(x + (BALDA_VIEW_KEYBOARD_CELL_W - img_icon_back.width) / 2,
+						y + (BALDA_VIEW_KEYBOARD_CELL_H - img_icon_back.height) / 2, &img_icon_back);
+					done = 1;
+					break;
+				}
 			}
 			
 			if (i >= BALDA_VIEW_KEYBOARD_W)
@@ -752,6 +827,7 @@ void balda_view_draw_all(balda_view_t* view)
 {
 	balda_view_draw_logo(view);
 	balda_view_draw_field(view);
+	balda_cancel_button_draw(&view->btn_cancel, 0, BALDA_CANCEL_BUTTON_FORCE_REDRAW_FULL);
 	balda_view_draw_players(view);
 	balda_view_draw_scoreboard(view, 0);
 	balda_view_draw_scoreboard(view, 1);

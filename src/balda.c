@@ -247,6 +247,11 @@ void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type)
 	balda->field[2][3].letter = 0;
 }
 
+void balda_surrender(balda_t* balda)
+{
+	// TODO
+}
+
 int balda_get_active_player(balda_t* balda)
 {
 	return balda->active_player;

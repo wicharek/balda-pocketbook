@@ -1,6 +1,8 @@
 #ifndef __BALDA_UTILS__H__
 #define __BALDA_UTILS__H__
 
+typedef unsigned char balda_bool;
+
 typedef struct
 {
 	char buffer[33];

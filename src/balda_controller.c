@@ -229,49 +229,73 @@ void balda_controller_on_key_pressed(int key)
 				case BALDA_TURN_STAGE_SELECT_POS:
 				{
 					// User has selected a position to insert letter
-					// Check if it is correct
-					balda_point_t pos = balda_view_field_get_selection(g_balda_controller.view);
 					
-					switch (balda_can_add_letter_at(g_balda_controller.balda, pos.x, pos.y))
+					if (balda_view_is_cancel_selected(g_balda_controller.view))
 					{
-						case BALDA_ADD_LETTER_RESULT_OK:
-						{
-							g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_LETTER;
-							balda_view_keyboard_select(g_balda_controller.view, 0, 0);
-							balda_view_field_select_inserting(g_balda_controller.view, pos,
-								balda_view_keyboard_get_selected_char(g_balda_controller.view));
-						}
-						break;
+						// Surrender selected, end game
+						balda_surrender(g_balda_controller.balda);
 						
-						case BALDA_ADD_LETTER_RESULT_FAIL_NOT_EMPTY_CELL:
-						{
-							Message(ICON_ERROR, (char*)balda_string(BALDA_STR_NOT_EMPTY_CELL_TITLE),
-								(char*)balda_string(BALDA_STR_NOT_EMPTY_CELL_MESSAGE), 5000);
-						}
-						break;
+						// TODO
+					}
+					else
+					{
+						// Letter insert place selected
+						// Check if it is correct
+						balda_point_t pos = balda_view_field_get_selection(g_balda_controller.view);
 						
-						case BALDA_ADD_LETTER_RESULT_FAIL_NOT_NEAR:
+						switch (balda_can_add_letter_at(g_balda_controller.balda, pos.x, pos.y))
 						{
-							Message(ICON_ERROR, (char*)balda_string(BALDA_STR_NOT_NEAR_TITLE),
-								(char*)balda_string(BALDA_STR_NOT_NEAR_MESSAGE), 5000);
+							case BALDA_ADD_LETTER_RESULT_OK:
+							{
+								g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_LETTER;
+								balda_view_keyboard_select(g_balda_controller.view, 5, 1); // kayboard center
+								balda_view_field_select_inserting(g_balda_controller.view, pos,
+									balda_view_keyboard_get_selected_char(g_balda_controller.view));
+							}
+							break;
+							
+							case BALDA_ADD_LETTER_RESULT_FAIL_NOT_EMPTY_CELL:
+							{
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_NOT_EMPTY_CELL_TITLE),
+									(char*)balda_string(BALDA_STR_NOT_EMPTY_CELL_MESSAGE), 5000);
+							}
+							break;
+							
+							case BALDA_ADD_LETTER_RESULT_FAIL_NOT_NEAR:
+							{
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_NOT_NEAR_TITLE),
+									(char*)balda_string(BALDA_STR_NOT_NEAR_MESSAGE), 5000);
+							}
+							break;
 						}
-						break;
 					}
 				}
 				break;
 				
 				case BALDA_TURN_STAGE_SELECT_LETTER:
 				{
-					// User has selected a character
-					// Now he should select first letter in a word
-					g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_FIRST;
-					
-					balda_char insert_char = balda_view_keyboard_get_selected_char(g_balda_controller.view);
-					balda_point_t insert_point = balda_view_field_get_selection(g_balda_controller.view);
-					
-					balda_view_keyboard_clear_selection(g_balda_controller.view);
-					balda_view_field_select_sequence_first(g_balda_controller.view, insert_point,
-						insert_point, insert_char);
+					if (balda_view_keyboard_is_back_selected(g_balda_controller.view))
+					{
+						// Go back to pos selection
+						balda_point_t sel_pos = balda_view_field_get_selection(g_balda_controller.view);
+						balda_view_field_select_single(g_balda_controller.view, sel_pos);
+						balda_view_keyboard_clear_selection(g_balda_controller.view);
+						
+						g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_POS;
+					}
+					else
+					{
+						// User has selected a character
+						// Now he should select first letter in a word
+						g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_FIRST;
+						
+						balda_char insert_char = balda_view_keyboard_get_selected_char(g_balda_controller.view);
+						balda_point_t insert_point = balda_view_field_get_selection(g_balda_controller.view);
+						
+						balda_view_keyboard_clear_selection(g_balda_controller.view);
+						balda_view_field_select_sequence_first(g_balda_controller.view, insert_point,
+							insert_point, insert_char);
+					}
 				}
 				break;
 				

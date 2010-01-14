@@ -8,7 +8,6 @@
 #define BALDA_FIELD_HEIGHT 5
 
 typedef unsigned short balda_char;
-typedef unsigned char balda_bool;
 static const balda_char BALDA_CHAR_NONE=0;
 
 #define BALDA_CHAR_NONE_IS_0
@@ -76,6 +75,7 @@ void balda_free(balda_t*);
 BALDA_STATE balda_get_state(balda_t* balda);
 
 void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type);
+void balda_surrender(balda_t* balda);
 
 void balda_set_player_name(balda_t* balda, int player_index, const char* name);
 const char* balda_get_player_name(balda_t* balda, int player_index);

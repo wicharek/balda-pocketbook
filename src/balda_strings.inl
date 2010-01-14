@@ -9,6 +9,9 @@ BALDA_STRING(BALDA_STR_NOT_NEAR_MESSAGE, "Вы должны добавить б�
 BALDA_STRING(BALDA_STR_EMPTY_CELL_TITLE, "Пустая ячейка")
 BALDA_STRING(BALDA_STR_EMPTY_CELL_MESSAGE, "Начинайте слово в ячейке, где есть буква.")
 
+BALDA_STRING(BALDA_STR_CAPTION_SURRENDER, "Сдаться")
+BALDA_STRING(BALDA_STR_CAPTION_BACK, "Отменить")
+
 #ifdef BALDA_STRING_DEFINE_MACROS
 #define BALDA_STR_MENU_HEADER "Меню"
 #define BALDA_STR_MENU_RESUME "Продолжить"
