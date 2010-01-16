@@ -1,4 +1,4 @@
-# coding: utf-8
+# encoding: utf-8
 
 #
 #   This file is a part of Balda game for PocketBook.
