@@ -28,6 +28,19 @@ BALDA_STRING(BALDA_STR_NOT_NEAR_TITLE, "Неправильная ячейка")
 BALDA_STRING(BALDA_STR_NOT_NEAR_MESSAGE, "Вы должны добавить букву в ячейку, прилегающую к уже занятым. Попробуйте ещё раз.")
 BALDA_STRING(BALDA_STR_EMPTY_CELL_TITLE, "Пустая ячейка")
 BALDA_STRING(BALDA_STR_EMPTY_CELL_MESSAGE, "Начинайте слово в ячейке, где есть буква.")
+BALDA_STRING(BALDA_STR_TOO_SHORT_TITLE, "Слишком короткое слово") // Not used so far
+BALDA_STRING(BALDA_STR_TOO_SHORT_MESSAGE, "Слово должно содержать минимум две буквы.") // Not used so far
+BALDA_STRING(BALDA_STR_UNKNOWN_WORD_TITLE, "Неизвестное слово")
+BALDA_STRING(BALDA_STR_UNKNOWN_WORD_MESSAGE, "Слово \"%s\" не найдено в словаре.")
+BALDA_STRING(BALDA_STR_INSERT_CHAR_NOT_SELECTED_TITLE, "Не использована дополнительная буква")
+BALDA_STRING(BALDA_STR_INSERT_CHAR_NOT_SELECTED_MESSAGE, "Выбранное слово должно содержать добавленную вами букву.")
+BALDA_STRING(BALDA_STR_WORD_ALREADY_USED_TITLE, "Слово уже использовано")
+BALDA_STRING(BALDA_STR_WORD_ALREADY_USED_MESSAGE, "Слово \"%s\" уже было использовано в текущей игре. "
+	"Слово можно использовать только один раз за игру.")
+BALDA_STRING(BALDA_STR_DRAW, "Ничья!")
+BALDA_STRING(BALDA_STR_WINNER, "Победил:")
+BALDA_STRING(BALDA_STR_PRESS_TO_PLAY_AGAIN, "Нажмите любую кнопку, чтобы сыграть ещё раз")
+
 
 BALDA_STRING(BALDA_STR_CAPTION_SURRENDER, "Сдаться")
 BALDA_STRING(BALDA_STR_CAPTION_BACK, "Отменить")

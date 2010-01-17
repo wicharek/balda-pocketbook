@@ -84,14 +84,14 @@ void balda_cancel_button_clear(balda_cancel_button_t* button)
 		BALDA_CANCEL_BUTTON_WIDTH+BALDA_CANCEL_BUTTON_MARGIN*2, BALDA_CANCEL_BUTTON_HEIGHT+BALDA_CANCEL_BUTTON_MARGIN*2, WHITE);
 }
 
-void balda_cancel_button_draw_content(balda_cancel_button_t* button, ibitmap* icon, const char* caption)
+void balda_cancel_button_draw_content(balda_cancel_button_t* button, const ibitmap* icon, const char* caption)
 {
 	DrawBitmap(button->pos.x + BALDA_CANCEL_BUTTON_ICON_PADDING,
 		button->pos.y + (BALDA_CANCEL_BUTTON_HEIGHT - icon->height) / 2, icon);
 	SetFont(button->font_caption, BLACK);
 	DrawTextRect(button->pos.x + BALDA_CANCEL_BUTTON_ICON_PADDING + icon->width + BALDA_CANCEL_BUTTON_ICON_CAPTIONS_OFFSET,
 		button->pos.y, BALDA_CANCEL_BUTTON_WIDTH-(BALDA_CANCEL_BUTTON_ICON_PADDING + icon->width + BALDA_CANCEL_BUTTON_ICON_CAPTIONS_OFFSET),
-		BALDA_CANCEL_BUTTON_HEIGHT, caption, VALIGN_MIDDLE | ALIGN_LEFT);
+		BALDA_CANCEL_BUTTON_HEIGHT, (char*)caption, VALIGN_MIDDLE | ALIGN_LEFT);
 }
 
 void balda_cancel_button_draw(balda_cancel_button_t* button, balda_bool update, BALDA_CANCEL_BUTTON_FORCE_REDRAW force)

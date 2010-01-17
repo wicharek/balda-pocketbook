@@ -58,11 +58,18 @@ void balda_view_field_select_sequence_delta(balda_view_t* view, BALDA_DIRECTION 
 	
 void balda_view_keyboard_clear_selection(balda_view_t* view);
 void balda_view_keyboard_select(balda_view_t* view, int x, int y);
+void balda_view_keyboard_select_point(balda_view_t* view, balda_point_t pos);
 void balda_view_keyboard_select_delta(balda_view_t* view, int dx, int dy);
 balda_char balda_view_keyboard_get_selected_char(balda_view_t* view);
+balda_point_t balda_view_keyboard_get_selection(balda_view_t* view);
 balda_bool balda_view_keyboard_is_back_selected(balda_view_t* view);
 
 void balda_view_reset(balda_view_t* view);
+
+void balda_view_draw_game_over(balda_view_t* view);
+void balda_view_draw_score(balda_view_t* view, int player_index, balda_bool update);
+void balda_view_draw_player_last_word(balda_view_t* view, int player_index, balda_bool update);
+void balda_view_draw_field(balda_view_t* view, balda_bool update);
 void balda_view_draw_all(balda_view_t* view);
 
 

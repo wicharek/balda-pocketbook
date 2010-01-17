@@ -23,22 +23,22 @@
 
 #include "balda_config.h"
 #include "balda_utils.h"
+#include "balda_char.h"
 
 #define BALDA_FIELD_WIDTH 5
 #define BALDA_FIELD_HEIGHT 5
 
-typedef unsigned short balda_char;
-static const balda_char BALDA_CHAR_NONE=0;
-
-#define BALDA_CHAR_NONE_IS_0
-
 struct balda_t_impl;
 typedef struct balda_t_impl balda_t;
+
+static const int GAME_RESULT_NONE = -1;
+static const int GAME_RESULT_DRAW = 2;
 
 typedef enum
 {
 	BALDA_STATE_NONE,
 	BALDA_STATE_PLAYING,
+	BALDA_STATE_GAMEOVER
 } BALDA_STATE;
 
 typedef enum
@@ -72,6 +72,8 @@ typedef enum
 {
 	BALDA_TURN_RESULT_OK,
 	BALDA_TURN_RESULT_TOO_SHORT,
+	BALDA_TURN_RESULT_INSERT_CHAR_NOT_SELECTED,
+	BALDA_TURN_RESULT_WORD_ALREADY_USED,
 	BALDA_TURN_RESULT_WORD_NOT_FOUND
 } BALDA_TURN_RESULT;
 
@@ -93,15 +95,21 @@ balda_t* balda_init(void);
 void balda_free(balda_t*);
 
 BALDA_STATE balda_get_state(balda_t* balda);
+BALDA_GAME_TYPE balda_get_game_type(balda_t* balda);
 
 void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type);
 void balda_surrender(balda_t* balda);
+balda_bool balda_is_game_over(balda_t* balda);
+int balda_get_winner(balda_t* balda);
 
 void balda_set_player_name(balda_t* balda, int player_index, const char* name);
 const char* balda_get_player_name(balda_t* balda, int player_index);
 
 int balda_get_score(balda_t* balda, int player_index);
+int balda_get_word_list_length(balda_t* balda, int player_index);
+const balda_char* balda_get_player_word(balda_t* balda, int player_index, int word_index);
 int balda_get_active_player(balda_t* balda);
+int balda_get_previous_active_player(balda_t* balda);
 balda_bool balda_is_active_player_ai(balda_t* balda);
 
 balda_char balda_get_letter_at(balda_t* balda, int x, int y);
@@ -112,8 +120,10 @@ void balda_sequence_reset(balda_t* balda);
 BALDA_SEQUENCE_NEXT_RESULT balda_sequence_next(balda_t* balda, BALDA_DIRECTION direction);
 BALDA_TURN_RESULT balda_sequence_make_turn(balda_t* balda);
 void balda_sequence_rollback_last(balda_t* balda);
+int balda_sequence_length(balda_t* balda);
 balda_point_t balda_sequence_last_selected(balda_t* balda);
 balda_point_t balda_sequence_prelast_selected(balda_t* balda);
+const balda_char* balda_sequence_get_word(balda_t* balda);
 
 void balda_make_ai_turn(balda_t* balda);
 

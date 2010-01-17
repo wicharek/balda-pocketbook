@@ -23,6 +23,7 @@
 #include <assert.h>
 
 #include "balda_view.h"
+#include "balda_strings.h"
 #include "balda_cancel_button.h"
 
 #define BALDA_MAX_SEQUENCE (BALDA_FIELD_WIDTH*BALDA_FIELD_HEIGHT)
@@ -53,7 +54,10 @@ const int BALDA_VIEW_SCORE_WIDTH = 160;
 const int BALDA_VIEW_SCORE_HEIGHT = 430;
 const int BALDA_VIEW_SCORE_PANEL_PADDING = 8;
 const int BALDA_VIEW_SCORE_PANEL_WIDTH = 75;
+const int BALDA_VIEW_SCORE_PANEL_DIGIT_WIDTH = 100;
 const int BALDA_VIEW_SCORE_PANEL_HEIGHT = 54;
+const int BALDA_VIEW_SCORE_WORD_PADDING = 6;
+const int BALDA_VIEW_SCORE_WORD_ITEM_H = 24;
 
 extern const ibitmap img_logo;
 extern const ibitmap img_turn_mark;
@@ -66,8 +70,11 @@ struct balda_view_t_impl
 	ifont* font_version;
 	ifont* font_player_name;
 	ifont* font_score_panel;
+	ifont* font_player_word;
 	ifont* font_field;
 	ifont* font_keyboard;
+	ifont* font_game_winner;
+	ifont* font_game_over_hint;
 	
 	const balda_char* keyboard;
 	
@@ -112,10 +119,13 @@ balda_view_t* balda_view_init(balda_t* balda)
 	view->balda = balda;
 	
 	view->font_version = OpenFont("LiberationSans", 11, 0);
-	view->font_player_name = OpenFont("LiberationSans", 16, 0);
+	view->font_player_name = OpenFont("LiberationSans", 18, 0);
 	view->font_score_panel = OpenFont("LiberationSans-Bold", 36, 1);
+	view->font_player_word = OpenFont("LiberationSans", 16, 1);
 	view->font_field = OpenFont("LiberationSans-Bold", 24, 0);
 	view->font_keyboard = OpenFont("LiberationSans-Bold", 28, 0);
+	view->font_game_winner = OpenFont("LiberationSans-Bold", 42, 0);
+	view->font_game_over_hint = OpenFont("LiberationSans", 18, 0);
 	
 	view->keyboard = 0;
 	
@@ -145,6 +155,9 @@ void balda_view_free(balda_view_t* view)
 	CloseFont(view->font_score_panel);
 	CloseFont(view->font_field);
 	CloseFont(view->font_keyboard);
+	CloseFont(view->font_player_word);
+	CloseFont(view->font_game_winner);
+	CloseFont(view->font_game_over_hint);
 	
 	balda_cancel_button_free(&view->btn_cancel);
 	
@@ -164,9 +177,8 @@ balda_char balda_view_get_letter_at(balda_view_t* view, int x, int y)
 
 void balda_view_draw_char(balda_char c, int x, int y, int w, int h, ifont* font, int color)
 {
-	balda_char char_buf[2] = { c, 0 };
 	char utf8_buf[4];
-	ucs2utf(char_buf, utf8_buf, sizeof(utf8_buf));
+	balda_single_char_to_utf8(c, utf8_buf, sizeof(utf8_buf));
 	
 	SetFont(font, color);
 	DrawTextRect(x, y, w, h, utf8_buf, VALIGN_MIDDLE | ALIGN_CENTER);
@@ -328,6 +340,10 @@ void balda_view_field_clear_selection(balda_view_t* view)
 			view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_NONE;
 		}
 		break;
+		
+		default:
+			// nothing so far
+		break;
 	}
 }
 
@@ -394,21 +410,61 @@ void balda_view_field_select_inserting(balda_view_t* view, balda_point_t point, 
 	balda_view_draw_field_entry(view,
 		balda_view_field_entry_x(view, point.x), balda_view_field_entry_y(view, point.y),
 		view->field_inserting_char, BALDA_VIEW_FIELD_ENTRY_INSERTING, 1, BALDA_VIEW_FIELD_SEQUENCE_FLAG_NONE);
+		
+	balda_cancel_button_set_visible(&view->btn_cancel, 1);
+	balda_cancel_button_set_mode(&view->btn_cancel, BALDA_CANCEL_BUTTON_MODE_SURRENDER);
+	balda_cancel_button_set_selected(&view->btn_cancel, 0);
+	balda_cancel_button_draw(&view->btn_cancel, 1, BALDA_CANCEL_BUTTON_FORCE_REDRAW_NONE);
 }
 
 void balda_view_field_select_sequence_first(balda_view_t* view, balda_point_t point, balda_point_t insert_point, balda_char insert_char)
 {
-	if (!balda_points_equal(view->field_sel, insert_point) || insert_char != view->field_inserting_char)
+	BALDA_VIEW_FIELD_SELECT_MODE prev_mode = view->field_mode;
+	/*if (!balda_points_equal(view->field_sel, insert_point) || insert_char != view->field_inserting_char)
 	{
 		balda_view_field_select_inserting(view, insert_point, insert_char);
-	}
+	}*/
 	
-	view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_SEQUENCE;
 	view->field_sel = point;
 	view->field_inserting_point = insert_point;
 	view->sequence_length = 0;
 	
-	balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+	if (prev_mode == BALDA_VIEW_FIELD_SELECT_MODE_INSERTING)
+	{
+		balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+	}
+	else if (prev_mode == BALDA_VIEW_FIELD_SELECT_MODE_SEQUENCE)
+	{
+		if (balda_points_equal(view->field_inserting_point, point))
+		{
+			// Slightly change char
+			int x = balda_view_field_entry_x(view, point.x);
+			int y = balda_view_field_entry_y(view, point.y);
+			DrawRect(x+3, y+3, BALDA_VIEW_FIELD_CELL_W-6, BALDA_VIEW_FIELD_CELL_H-6, BLACK);
+			DrawRect(x+1, y+1, BALDA_VIEW_FIELD_CELL_W-2, BALDA_VIEW_FIELD_CELL_H-2, WHITE);
+			PartialUpdateBW(x+3, y+3, BALDA_VIEW_FIELD_CELL_W-6, BALDA_VIEW_FIELD_CELL_H-6);
+		}
+		
+		/*FillArea(balda_view_field_entry_x(view, point.x) - BALDA_VIEW_FIELD_CELL_PADDING/2,
+			balda_view_field_entry_y(view, point.y) - BALDA_VIEW_FIELD_CELL_PADDING/2,
+			BALDA_VIEW_FIELD_CELL_W + BALDA_VIEW_FIELD_CELL_PADDING,
+			BALDA_VIEW_FIELD_CELL_H + BALDA_VIEW_FIELD_CELL_PADDING,
+			BALDA_VIEW_FIELD_SEQUENCE_FILL_COLOR);
+		
+		balda_view_draw_field_entry(view,
+			balda_view_field_entry_x(view, point.x), balda_view_field_entry_y(view, point.y),
+			balda_view_get_letter_at(view, point.x, point.y),
+			balda_points_equal(view->field_inserting_point, point) ?
+				BALDA_VIEW_FIELD_ENTRY_INSERTING : BALDA_VIEW_FIELD_ENTRY_NORMAL,
+			1, BALDA_VIEW_FIELD_SEQUENCE_FLAG_NONE);*/
+	}
+	
+	view->field_mode = BALDA_VIEW_FIELD_SELECT_MODE_SEQUENCE;
+	
+	balda_cancel_button_set_visible(&view->btn_cancel, 1);
+	balda_cancel_button_set_mode(&view->btn_cancel, BALDA_CANCEL_BUTTON_MODE_BACK);
+	balda_cancel_button_set_selected(&view->btn_cancel, view->field_sel.y == BALDA_FIELD_HEIGHT);
+	balda_cancel_button_draw(&view->btn_cancel, 1, BALDA_CANCEL_BUTTON_FORCE_REDRAW_NONE);
 }
 
 void balda_view_field_select_sequence_first_delta(balda_view_t* view, int dx, int dy)
@@ -416,15 +472,20 @@ void balda_view_field_select_sequence_first_delta(balda_view_t* view, int dx, in
 	assert(view->field_mode == BALDA_VIEW_FIELD_SELECT_MODE_SEQUENCE);
 	
 	balda_point_t pos = balda_make_point((view->field_sel.x + dx) % BALDA_FIELD_WIDTH,
-		(view->field_sel.y + dy) % BALDA_FIELD_HEIGHT);
+		(view->field_sel.y + dy) % (BALDA_FIELD_HEIGHT + 1));
 		
 	if (pos.x < 0)
 		pos.x = BALDA_FIELD_WIDTH + pos.x;
 	if (pos.y < 0)
-		pos.y = BALDA_FIELD_HEIGHT + pos.y;
+		pos.y = BALDA_FIELD_HEIGHT + pos.y + 1;
 	
-	balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
-	balda_view_field_invert(view, pos.x, pos.y);
+	if (view->field_sel.y < BALDA_FIELD_HEIGHT)
+		balda_view_field_invert(view, view->field_sel.x, view->field_sel.y);
+	if (pos.y < BALDA_FIELD_HEIGHT)
+		balda_view_field_invert(view, pos.x, pos.y);
+	
+	balda_cancel_button_set_selected(&view->btn_cancel, pos.y == BALDA_FIELD_HEIGHT);
+	balda_cancel_button_draw(&view->btn_cancel, 1, BALDA_CANCEL_BUTTON_FORCE_REDRAW_NONE);
 	
 	view->field_sel = pos;
 }
@@ -643,6 +704,11 @@ void balda_view_keyboard_select(balda_view_t* view, int x, int y)
 	view->keyboard_selected = 1;
 }
 
+void balda_view_keyboard_select_point(balda_view_t* view, balda_point_t pos)
+{
+	balda_view_keyboard_select(view, pos.x, pos.y);
+}
+
 void balda_view_keyboard_select_delta(balda_view_t* view, int dx, int dy)
 {
 	balda_point_t pos = balda_make_point((view->keyboard_pos.x + dx) % BALDA_VIEW_KEYBOARD_W,
@@ -715,6 +781,11 @@ balda_char balda_view_keyboard_get_selected_char(balda_view_t* view)
 	return 0;
 }
 
+balda_point_t balda_view_keyboard_get_selection(balda_view_t* view)
+{
+	assert(view->keyboard);
+	return view->keyboard_pos;
+}
 
 
 void balda_view_show_turn(balda_view_t* view)
@@ -745,12 +816,16 @@ void balda_view_draw_logo(balda_view_t* view)
 	
 }
 
-void balda_view_draw_field(balda_view_t* view)
+void balda_view_draw_field(balda_view_t* view, balda_bool update)
 {
 	int left = view->field_left;
 	int i, j, x, y = BALDA_VIEW_FIELD_Y;
 	
-	printf("%d\n", left);
+	FillArea(view->field_left-BALDA_VIEW_FIELD_CELL_PADDING/2,
+		BALDA_VIEW_FIELD_Y-BALDA_VIEW_FIELD_CELL_PADDING/2,
+		(BALDA_VIEW_FIELD_CELL_W + BALDA_VIEW_FIELD_CELL_PADDING) * BALDA_FIELD_WIDTH,
+		(BALDA_VIEW_FIELD_CELL_H + BALDA_VIEW_FIELD_CELL_PADDING) * BALDA_FIELD_HEIGHT,
+		WHITE);
 	
 	for (j=0; j<BALDA_FIELD_HEIGHT; ++j, y += (BALDA_VIEW_FIELD_CELL_H + BALDA_VIEW_FIELD_CELL_PADDING))
 	{
@@ -760,6 +835,14 @@ void balda_view_draw_field(balda_view_t* view)
 			balda_view_draw_field_entry(view, x, y, balda_get_letter_at(view->balda, i, j),
 				BALDA_VIEW_FIELD_ENTRY_NORMAL, 0, BALDA_VIEW_FIELD_SEQUENCE_FLAG_NONE);
 		}
+	}
+	
+	if (update)
+	{	
+		PartialUpdateBW(view->field_left-BALDA_VIEW_FIELD_CELL_PADDING/2,
+			BALDA_VIEW_FIELD_Y-BALDA_VIEW_FIELD_CELL_PADDING/2,
+			(BALDA_VIEW_FIELD_CELL_W + BALDA_VIEW_FIELD_CELL_PADDING) * BALDA_FIELD_WIDTH,
+			(BALDA_VIEW_FIELD_CELL_H + BALDA_VIEW_FIELD_CELL_PADDING) * BALDA_FIELD_HEIGHT);
 	}
 }
 
@@ -778,26 +861,77 @@ void balda_view_draw_players(balda_view_t* view)
 		player_name_1);
 }
 
-void balda_view_draw_scoreboard(balda_view_t* view, int player_index)
+void balda_view_draw_score(balda_view_t* view, int player_index, balda_bool update)
 {
 	int left = (player_index == 0) ? BALDA_VIEW_SCORE_MARGIN :
 		ScreenWidth() - BALDA_VIEW_SCORE_MARGIN - BALDA_VIEW_SCORE_WIDTH;
 	int bg_color = LGRAY;
 	int score_panel_x = (player_index == 0) ? (left + BALDA_VIEW_SCORE_WIDTH) :
 		(left - BALDA_VIEW_SCORE_PANEL_WIDTH);
-	int score_panel_digit_x = (player_index == 0) ? 0 : (score_panel_x + BALDA_VIEW_SCORE_PANEL_PADDING);
-	int score_panel_digit_w = (player_index == 0) ? (score_panel_x + BALDA_VIEW_SCORE_PANEL_WIDTH - BALDA_VIEW_SCORE_PANEL_PADDING) :
-		(ScreenWidth() - score_panel_digit_x);
+	int score_panel_digit_x = (player_index == 0) ? (score_panel_x - BALDA_VIEW_SCORE_PANEL_PADDING +
+			BALDA_VIEW_SCORE_PANEL_WIDTH - BALDA_VIEW_SCORE_PANEL_DIGIT_WIDTH) :
+		(score_panel_x + BALDA_VIEW_SCORE_PANEL_PADDING);
+	int score_panel_digit_w = BALDA_VIEW_SCORE_PANEL_DIGIT_WIDTH;
 	
-	FillArea(left, BALDA_VIEW_SCORE_Y, BALDA_VIEW_SCORE_WIDTH, BALDA_VIEW_SCORE_HEIGHT, bg_color);
-	FillArea(score_panel_x, BALDA_VIEW_SCORE_Y, BALDA_VIEW_SCORE_PANEL_WIDTH,
-		BALDA_VIEW_SCORE_PANEL_HEIGHT, bg_color);
+	if (update)
+	{
+		FillArea(score_panel_digit_x, BALDA_VIEW_SCORE_Y, score_panel_digit_w, BALDA_VIEW_SCORE_PANEL_HEIGHT, bg_color);
+	}
 	
 	SetFont(view->font_score_panel, BLACK);
 	DrawTextRect(score_panel_digit_x, BALDA_VIEW_SCORE_Y, score_panel_digit_w, BALDA_VIEW_SCORE_PANEL_HEIGHT,
 		(char*)balda_itoa(&view->int_conv, balda_get_score(view->balda, player_index)),
 		VALIGN_MIDDLE | (player_index == 0 ? ALIGN_RIGHT : ALIGN_LEFT));
+		
+	if (update)
+	{
+		PartialUpdate(score_panel_digit_x, BALDA_VIEW_SCORE_Y,
+			score_panel_digit_w, BALDA_VIEW_SCORE_PANEL_HEIGHT);
+	}
+}
+void balda_view_draw_scoreboard(balda_view_t* view, int player_index)
+{
+	int left = (player_index == 0) ? BALDA_VIEW_SCORE_MARGIN :
+		(ScreenWidth() - BALDA_VIEW_SCORE_MARGIN - BALDA_VIEW_SCORE_WIDTH);
+	int bg_color = LGRAY;
+	int score_panel_x = (player_index == 0) ? (left + BALDA_VIEW_SCORE_WIDTH) :
+		(left - BALDA_VIEW_SCORE_PANEL_WIDTH);
+		
+	FillArea(left, BALDA_VIEW_SCORE_Y, BALDA_VIEW_SCORE_WIDTH, BALDA_VIEW_SCORE_HEIGHT, bg_color);
+	FillArea(score_panel_x, BALDA_VIEW_SCORE_Y, BALDA_VIEW_SCORE_PANEL_WIDTH,
+		BALDA_VIEW_SCORE_PANEL_HEIGHT, bg_color);
+		
+	balda_view_draw_score(view, player_index, 0);
+}
+
+void balda_view_draw_player_last_word(balda_view_t* view, int player_index, balda_bool update)
+{
+	int word_index = balda_get_word_list_length(view->balda, player_index)-1;
 	
+	if (word_index >= 0)
+	{
+		int left = ((player_index == 0) ? BALDA_VIEW_SCORE_MARGIN :
+			ScreenWidth() - BALDA_VIEW_SCORE_MARGIN - BALDA_VIEW_SCORE_WIDTH) + BALDA_VIEW_SCORE_WORD_PADDING;
+		int top = BALDA_VIEW_SCORE_Y + BALDA_VIEW_SCORE_PANEL_HEIGHT + word_index * BALDA_VIEW_SCORE_WORD_ITEM_H + BALDA_VIEW_SCORE_WORD_PADDING;
+		
+		//int bg_color = LGRAY;
+		
+		char word_buf[64];
+		const balda_char* word = balda_get_player_word(view->balda, player_index, word_index);
+		balda_char_to_utf8_lowercase(word, word_buf, sizeof(word_buf));
+		
+		char utf8_buf[128];
+		sprintf(utf8_buf, "%s (%d)", word_buf, balda_char_strlen(word));
+		
+		SetFont(view->font_player_word, BLACK);
+		DrawTextRect(left, top, BALDA_VIEW_SCORE_WIDTH - BALDA_VIEW_SCORE_WORD_PADDING*2, BALDA_VIEW_SCORE_WORD_ITEM_H,
+			utf8_buf, VALIGN_MIDDLE | (player_index == 0 ? ALIGN_LEFT : ALIGN_RIGHT));
+		
+		if (update)
+		{
+			PartialUpdate(left, top, BALDA_VIEW_SCORE_WIDTH - BALDA_VIEW_SCORE_WORD_PADDING*2, BALDA_VIEW_SCORE_WORD_ITEM_H);
+		}
+	}
 }
 
 void balda_view_set_keyboard(balda_view_t* view, const balda_char* keyboard)
@@ -843,10 +977,48 @@ void balda_view_draw_keyboard(balda_view_t* view)
 	}
 }
 
+void balda_view_draw_game_over(balda_view_t* view)
+{
+	int width = (BALDA_VIEW_KEYBOARD_CELL_W + BALDA_VIEW_KEYBOARD_CELL_PADDING) * BALDA_VIEW_KEYBOARD_W;
+	int height = (BALDA_VIEW_KEYBOARD_CELL_W + BALDA_VIEW_KEYBOARD_CELL_PADDING) * view->keyboard_h;
+	FillArea(view->keyboard_left, BALDA_VIEW_KEYBOARD_Y,
+		width, height, WHITE);
+	
+	int winner = balda_get_winner(view->balda);
+	assert(winner != GAME_RESULT_NONE);
+	
+	SetFont(view->font_game_winner, BLACK);
+	
+	if (winner == GAME_RESULT_DRAW)
+	{
+		DrawTextRect(view->keyboard_left, BALDA_VIEW_KEYBOARD_Y, width, height,
+			(char*)balda_string(BALDA_STR_DRAW), VALIGN_MIDDLE | ALIGN_CENTER);
+	}
+	else
+	{
+		DrawTextRect(view->keyboard_left, BALDA_VIEW_KEYBOARD_Y, width, height,
+			(char*)balda_get_player_name(view->balda, winner), VALIGN_MIDDLE | ALIGN_CENTER);
+	}
+	
+	SetFont(view->font_game_over_hint, BLACK);
+	if (winner != GAME_RESULT_DRAW)
+	{
+		DrawTextRect(view->keyboard_left, BALDA_VIEW_KEYBOARD_Y, width, height,
+			(char*)balda_string(BALDA_STR_WINNER), VALIGN_TOP | ALIGN_CENTER);
+	}
+	
+	DrawTextRect(view->keyboard_left, BALDA_VIEW_KEYBOARD_Y, width, height,
+			(char*)balda_string(BALDA_STR_PRESS_TO_PLAY_AGAIN), VALIGN_BOTTOM | ALIGN_CENTER);
+	
+	
+	PartialUpdateBW(view->keyboard_left, BALDA_VIEW_KEYBOARD_Y,
+		width, height);
+}
+
 void balda_view_draw_all(balda_view_t* view)
 {
 	balda_view_draw_logo(view);
-	balda_view_draw_field(view);
+	balda_view_draw_field(view, 0);
 	balda_cancel_button_draw(&view->btn_cancel, 0, BALDA_CANCEL_BUTTON_FORCE_REDRAW_FULL);
 	balda_view_draw_players(view);
 	balda_view_draw_scoreboard(view, 0);

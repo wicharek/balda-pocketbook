@@ -101,7 +101,7 @@ end
 class BaldaPlainDataChunk<BaldaDataChunk
 	attr_accessor :string, :next_chunk, :ends_here
 
-	def initialize(string)
+	def initialize(string='')
 		super(BaldaDataChunk::PLAIN)
 		@string = string
 	end
@@ -165,26 +165,35 @@ class BaldaData
 		return nil if tree_entry.children.empty?
 	
 		if tree_entry.single? then
-			# gather string
-			chunk = BaldaPlainDataChunk.new(String.new(tree_entry.char))
-			
-			while tree_entry.single?
-				tree_entry = tree_entry.children.values.first
-				chunk.string << tree_entry.char
-			end
-			
-			if tree_entry.ends_here then
-				chunk.ends_here = true
+			if tree_entry.children.values.first.children.length > 1 then
+				# more efficient is to use list with single element here
+				chunk = BaldaListDataChunk.new
+				
+				e = tree_entry.children.values.first
+				chunk.list.push BaldaDataChunkEntry.new(e.char, e.ends_here, self.get_chunk(e))
+			else
+				# gather string
+				chunk = BaldaPlainDataChunk.new
+				
+				while tree_entry.single?
+					tree_entry = tree_entry.children.values.first
+					chunk.string << tree_entry.char
+				end
+				
+				if tree_entry.ends_here then
+					chunk.ends_here = true
+				end
+				
 				chunk.next_chunk = get_chunk(tree_entry)
+				
+				prev_c = @stats_plain_strings_c[chunk.string.length]
+				@stats_plain_strings_c[chunk.string.length] = prev_c+1 unless prev_c.nil?
+				@stats_plain_strings_c[chunk.string.length] = 1 if prev_c.nil?
+				
+				prev_c = @stats_plain_strings[chunk.string]
+				@stats_plain_strings[chunk.string] = prev_c+1 unless prev_c.nil?
+				@stats_plain_strings[chunk.string] = 1 if prev_c.nil?
 			end
-			
-			prev_c = @stats_plain_strings_c[chunk.string.length]
-			@stats_plain_strings_c[chunk.string.length] = prev_c+1 unless prev_c.nil?
-			@stats_plain_strings_c[chunk.string.length] = 1 if prev_c.nil?
-			
-			prev_c = @stats_plain_strings[chunk.string]
-			@stats_plain_strings[chunk.string] = prev_c+1 unless prev_c.nil?
-			@stats_plain_strings[chunk.string] = 1 if prev_c.nil?
 			
 			return chunk
 		else
@@ -229,18 +238,6 @@ class BaldaData
 	end
 	
 	def print_debug(out)
-		out.puts 'Plain string stats (by length):'
-		@stats_plain_strings_c.to_a.sort{ |a, b| b[1] <=> a[1] }.each { |c|
-			out.puts "string[#{c[0]}]: #{c[1]}"
-		}
-		out.puts ''
-		
-		out.puts 'Plain string stats (by string):'
-		@stats_plain_strings.to_a.sort{ |a, b| b[1] <=> a[1] }.each { |c|
-			out.puts "string[#{c[0]}]: #{c[1]}"
-		}
-		out.puts ''
-	
 		out.puts 'Chunks:'
 		out.puts ''
 		@all_chunks.each do |chunk|
@@ -265,11 +262,25 @@ class BaldaData
 			
 			out.puts ''
 		end
+		
+		out.puts 'Plain string stats (by length):'
+		@stats_plain_strings_c.to_a.sort{ |a, b| b[1] <=> a[1] }.each { |c|
+			out.puts "string[#{c[0]}]: #{c[1]}"
+		}
+		out.puts ''
+		
+		out.puts 'Plain string stats (by string):'
+		@stats_plain_strings.to_a.sort{ |a, b| b[1] <=> a[1] }.each { |c|
+			out.puts "string[#{c[0]}]: #{c[1]}"
+		}
+		out.puts ''
 	end
 	
 	HEADER_SINGLE_CHAR_FLAG = 0x20000000
+	HEADER_LAST_CHUNK_FLAG = 0x20000000
 	HEADER_ENDS_HERE_FLAG = 0x40000000
 	HEADER_PLAIN_FLAG = 0x80000000
+	HEADER_COUNT_MASK = 0x1F000000
 	
 	ENTRY_ENDS_HERE_FLAG = 0x80000000
 	
@@ -316,13 +327,16 @@ class BaldaData
 				if chunk.next_chunk.nil?
 					# optimized
 					self.write_c_uint_string(chars, 
-						HEADER_PLAIN_FLAG | (chunk.ends_here ? HEADER_ENDS_HERE_FLAG : 0), 8)
+						HEADER_PLAIN_FLAG | HEADER_LAST_CHUNK_FLAG |
+							((chars.length << 24) & HEADER_COUNT_MASK) |
+							(chunk.ends_here ? HEADER_ENDS_HERE_FLAG : 0), 8)
 				else
 					# normal, has next chunk
 					# header
 					write_c_uint_array_value(
 						HEADER_PLAIN_FLAG |
 						(chunk.ends_here ? HEADER_ENDS_HERE_FLAG : 0) |
+						((chars.length << 24) & HEADER_COUNT_MASK) |
 						(chunk.next_chunk.offset & 0xffffff) # offset
 					)
 					
@@ -338,19 +352,22 @@ class BaldaData
 	def write_c_uint_string(chars, value, offset)
 		chars.each { |c|
 			shift = 32-offset-5
-			value |= ((c & 0x1F) << shift)
-			offset += 5
+			#if shift > 0 then
+				value |= ((c & 0x1F) << shift)
+			#else
+			#	value |= ((c & 0x1F) >> -shift)
+			#end
+			
 			if shift <= 0 then
 				self.write_c_uint_array_value(value)
 				value = 0
 				
 				if shift < 0 then
-					shift = 32-offset-5
-					value |= (((c & 0x1F) << shift) & 0xffffffff)
+					value |= (((c & 0x1F) << (32+shift)) & 0xffffffff)
 				end
-				
-				offset = offset % 32
 			end
+			
+			offset = (offset + 5) % 32
 		}
 		
 		# not written data left

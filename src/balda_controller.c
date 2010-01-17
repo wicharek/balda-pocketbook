@@ -30,7 +30,8 @@ const char* balda_ytsuken_keyboard_ru = "ЙЦУКЕНГШЩЗХФЫВАПРОЛ�
 const char* balda_abvgde_keyboard_ru = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
 
 static imenu new_game_menu[] = {
-	{ ITEM_ACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
+	//{ ITEM_ACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
+	{ ITEM_INACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
 	{ ITEM_ACTIVE, 112, BALDA_STR_MENU_TWO_PLAYERS, NULL },
 	
 	{ 0, 0, NULL, NULL }
@@ -63,14 +64,32 @@ void balda_controller_init(balda_t* balda)
 {
 	g_balda_controller.balda = balda;
 	
-	utf2ucs(balda_ytsuken_keyboard_ru, g_balda_controller.ytsuken_keyboard_ru, 33);
-	utf2ucs(balda_abvgde_keyboard_ru, g_balda_controller.abvgde_keyboard_ru, 33);
+	balda_char_from_utf8(balda_ytsuken_keyboard_ru, g_balda_controller.ytsuken_keyboard_ru, 33);
+	balda_char_from_utf8(balda_abvgde_keyboard_ru, g_balda_controller.abvgde_keyboard_ru, 33);
 }
 
-void balda_controller_next_turn()
+void balda_controller_on_game_started();
+void balda_controller_on_game_over();
+void balda_controller_new_game(BALDA_GAME_TYPE type)
+{
+	balda_new_game(g_balda_controller.balda, type);
+	if (type == BALDA_GAME_TYPE_ONE_PLAYER)
+		balda_set_player_name(g_balda_controller.balda, 1, balda_string(BALDA_STR_AI_PLAYER_NAME));
+	else
+		balda_set_player_name(g_balda_controller.balda, 1, balda_string(BALDA_STR_DEFAULT_PLAYER_NAME_1));
+	balda_controller_on_game_started();
+}
+
+void balda_controller_next_turn(balda_bool first)
 {
 	//int active_player = balda_get_active_player(g_balda_controller.balda);
 	balda_view_show_turn(g_balda_controller.view);
+	
+	if (!first)
+	{
+		balda_view_draw_score(g_balda_controller.view, balda_get_previous_active_player(g_balda_controller.balda), 1);
+		balda_view_draw_player_last_word(g_balda_controller.view, balda_get_previous_active_player(g_balda_controller.balda), 1);
+	}
 	
 	if (balda_is_active_player_ai(g_balda_controller.balda))
 	{
@@ -80,24 +99,45 @@ void balda_controller_next_turn()
 		
 		// TODO: Redraw field
 		
-		balda_controller_next_turn();
+		if (balda_is_game_over(g_balda_controller.balda))
+			balda_controller_on_game_over();
+		else
+			balda_controller_next_turn(0);
 	}
 	else
 	{
 		g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_POS;
-		balda_view_field_select_single(g_balda_controller.view,
-			balda_make_point(BALDA_FIELD_WIDTH / 2, BALDA_FIELD_HEIGHT / 2));
+		
+		if (!first)
+			balda_view_draw_field(g_balda_controller.view, 1);
+		
+		if (balda_is_game_over(g_balda_controller.balda))
+			balda_controller_on_game_over();
+		else
+		{
+			balda_view_field_select_single(g_balda_controller.view,
+				balda_make_point(BALDA_FIELD_WIDTH / 2, BALDA_FIELD_HEIGHT / 2));
+		}
 	}
 }
 
 void balda_controller_on_game_started()
 {
+	ClearScreen();
+	FullUpdate();
+	
 	balda_view_draw_all(g_balda_controller.view);
 	balda_view_reset(g_balda_controller.view);
+	
 	FullUpdate();
 	FineUpdate();
 	
-	balda_controller_next_turn();
+	balda_controller_next_turn(1);
+}
+
+void balda_controller_on_game_over()
+{
+	balda_view_draw_game_over(g_balda_controller.view);
 }
 
 void balda_controller_on_evt_init()
@@ -106,17 +146,15 @@ void balda_controller_on_evt_init()
 	
 	balda_view_set_keyboard(g_balda_controller.view, g_balda_controller.ytsuken_keyboard_ru);
 	
-	balda_new_game(g_balda_controller.balda, BALDA_GAME_TYPE_ONE_PLAYER);
 	balda_set_player_name(g_balda_controller.balda, 0, balda_string(BALDA_STR_DEFAULT_PLAYER_NAME_0));
-	balda_set_player_name(g_balda_controller.balda, 1, balda_string(BALDA_STR_AI_PLAYER_NAME));
 }
 
 void balda_controller_on_evt_show()
 {
-	ClearScreen();
-	FullUpdate();
+	//ClearScreen();
+	//FullUpdate();
 	
-	balda_controller_on_game_started(1);
+	balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
 }
 
 void balda_controller_main_menu_handler(int index)
@@ -128,11 +166,11 @@ void balda_controller_main_menu_handler(int index)
 		break;
 		
 		case 111: // New game -> Single player
-			// TODO
+			balda_controller_new_game(BALDA_GAME_TYPE_ONE_PLAYER);
 		break;
 		
 		case 112: // New game -> Two players
-			// TODO
+			balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
 		break;
 		
 		case 150: // Exit
@@ -232,6 +270,13 @@ void balda_controller_on_cursor_key_pressed(int key)
 
 void balda_controller_on_key_pressed(int key)
 {
+	if (key != KEY_MENU && balda_is_game_over(g_balda_controller.balda))
+	{
+		// restart game on button press
+		balda_controller_new_game(balda_get_game_type(g_balda_controller.balda));
+		return;
+	}
+	
 	switch (key)
 	{
 		case KEY_MENU:
@@ -254,8 +299,7 @@ void balda_controller_on_key_pressed(int key)
 					{
 						// Surrender selected, end game
 						balda_surrender(g_balda_controller.balda);
-						
-						// TODO
+						balda_controller_on_game_over();
 					}
 					else
 					{
@@ -268,7 +312,7 @@ void balda_controller_on_key_pressed(int key)
 							case BALDA_ADD_LETTER_RESULT_OK:
 							{
 								g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_LETTER;
-								balda_view_keyboard_select(g_balda_controller.view, 5, 1); // kayboard center
+								balda_view_keyboard_select(g_balda_controller.view, 5, 1); // keyboard center
 								balda_view_field_select_inserting(g_balda_controller.view, pos,
 									balda_view_keyboard_get_selected_char(g_balda_controller.view));
 							}
@@ -321,27 +365,114 @@ void balda_controller_on_key_pressed(int key)
 				
 				case BALDA_TURN_STAGE_SELECT_FIRST:
 				{
-					// User has selected a first character in a sequence
-					// Now he should define a word
-					
-					BALDA_SEQUENCE_START_RESULT result = balda_sequence_start(g_balda_controller.balda,
-						balda_view_field_get_selection(g_balda_controller.view),
-						balda_view_field_get_insert_pos(g_balda_controller.view),
-						balda_view_field_get_insert_char(g_balda_controller.view));
-						
-					switch (result)
+					if (balda_view_is_cancel_selected(g_balda_controller.view))
 					{
-						case BALDA_SEQUENCE_START_RESULT_OK:
-							// everything fine continue defining word sequence
-							g_balda_controller.turn_stage = BALDA_TURN_STAGE_DEFINE_WORD;
-							balda_view_field_select_sequence_first_complete(g_balda_controller.view);
-						break;
+						// Go back to letter selecting
+						balda_view_keyboard_select_point(g_balda_controller.view,
+							balda_view_keyboard_get_selection(g_balda_controller.view)); // keyboard center
+						balda_view_field_select_inserting(g_balda_controller.view,
+							balda_view_field_get_insert_pos(g_balda_controller.view),
+							balda_view_keyboard_get_selected_char(g_balda_controller.view));
+							
+						g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_LETTER;
+					}
+					else
+					{
+						// User has selected a first character in a sequence
+						// Now he should define a word
 						
-						case BALDA_SEQUENCE_START_RESULT_FAIL_EMPTY_CELL:
-							// can't start in empty cell
-							Message(ICON_ERROR, (char*)balda_string(BALDA_STR_EMPTY_CELL_TITLE),
-								(char*)balda_string(BALDA_STR_EMPTY_CELL_MESSAGE), 5000);
-						break;
+						BALDA_SEQUENCE_START_RESULT result = balda_sequence_start(g_balda_controller.balda,
+							balda_view_field_get_selection(g_balda_controller.view),
+							balda_view_field_get_insert_pos(g_balda_controller.view),
+							balda_view_field_get_insert_char(g_balda_controller.view));
+							
+						switch (result)
+						{
+							case BALDA_SEQUENCE_START_RESULT_OK:
+								// everything fine continue defining word sequence
+								g_balda_controller.turn_stage = BALDA_TURN_STAGE_DEFINE_WORD;
+								balda_view_field_select_sequence_first_complete(g_balda_controller.view);
+							break;
+							
+							case BALDA_SEQUENCE_START_RESULT_FAIL_EMPTY_CELL:
+								// can't start in empty cell
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_EMPTY_CELL_TITLE),
+									(char*)balda_string(BALDA_STR_EMPTY_CELL_MESSAGE), 5000);
+							break;
+						}
+					}
+				}
+				break;
+				
+				case BALDA_TURN_STAGE_DEFINE_WORD:
+				{
+					if (balda_sequence_length(g_balda_controller.balda) > 1)
+					{
+						// Try make turn
+						BALDA_TURN_RESULT result = balda_sequence_make_turn(g_balda_controller.balda);
+						
+						switch (result)
+						{
+							case BALDA_TURN_RESULT_OK:
+							{
+								balda_controller_next_turn(0);
+							}
+							break;
+							
+							case BALDA_TURN_RESULT_WORD_ALREADY_USED:
+							{
+								static char utf8_buffer[51];
+								static char msg_buffer[512];
+								balda_char_to_utf8(balda_sequence_get_word(g_balda_controller.balda), utf8_buffer, sizeof(utf8_buffer));
+								//printf("buf: %s\n", utf8_buffer);
+								sprintf(msg_buffer, balda_string(BALDA_STR_WORD_ALREADY_USED_MESSAGE), utf8_buffer);
+								
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_WORD_ALREADY_USED_TITLE),
+									msg_buffer, 5000);
+							}
+							break;
+							
+							case BALDA_TURN_RESULT_INSERT_CHAR_NOT_SELECTED:
+							{
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_INSERT_CHAR_NOT_SELECTED_TITLE),
+									(char*)balda_string(BALDA_STR_INSERT_CHAR_NOT_SELECTED_MESSAGE), 5000);
+							}
+							break;
+							
+							case BALDA_TURN_RESULT_TOO_SHORT:
+							{
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_TOO_SHORT_TITLE),
+									(char*)balda_string(BALDA_STR_TOO_SHORT_MESSAGE), 5000);
+							}
+							break;
+							
+							case BALDA_TURN_RESULT_WORD_NOT_FOUND:
+							{
+								static char utf8_buffer[51];
+								static char msg_buffer[256];
+								balda_char_to_utf8(balda_sequence_get_word(g_balda_controller.balda), utf8_buffer, sizeof(utf8_buffer));
+								//printf("buf: %s\n", utf8_buffer);
+								sprintf(msg_buffer, balda_string(BALDA_STR_UNKNOWN_WORD_MESSAGE), utf8_buffer);
+								
+								Message(ICON_ERROR, (char*)balda_string(BALDA_STR_UNKNOWN_WORD_TITLE),
+									msg_buffer, 5000);
+							}
+							break;
+						}
+					}
+					else
+					{
+						// Cancel selecting
+						balda_sequence_reset(g_balda_controller.balda);
+						
+						balda_char insert_char = balda_view_field_get_insert_char(g_balda_controller.view);
+						balda_point_t sel_point = balda_view_field_get_selection(g_balda_controller.view);
+						balda_point_t insert_point = balda_view_field_get_insert_pos(g_balda_controller.view);
+						
+						balda_view_field_select_sequence_first(g_balda_controller.view, sel_point,
+							insert_point, insert_char);
+						
+						g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_FIRST;
 					}
 				}
 				break;
