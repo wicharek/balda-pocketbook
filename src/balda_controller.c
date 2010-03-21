@@ -30,8 +30,8 @@ const char* balda_ytsuken_keyboard_ru = "ЙЦУКЕНГШЩЗХФЫВАПРОЛ�
 const char* balda_abvgde_keyboard_ru = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
 
 static imenu new_game_menu[] = {
-	//{ ITEM_ACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
-	{ ITEM_INACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
+	{ ITEM_ACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
+	//{ ITEM_INACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
 	{ ITEM_ACTIVE, 112, BALDA_STR_MENU_TWO_PLAYERS, NULL },
 	
 	{ 0, 0, NULL, NULL }
@@ -98,6 +98,7 @@ void balda_controller_next_turn(balda_bool first)
 		HideHourglass();
 		
 		// TODO: Redraw field
+		balda_view_draw_field(g_balda_controller.view, 1);
 		
 		if (balda_is_game_over(g_balda_controller.balda))
 			balda_controller_on_game_over();
@@ -154,7 +155,8 @@ void balda_controller_on_evt_show()
 	//ClearScreen();
 	//FullUpdate();
 	
-	balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
+	//balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
+	balda_controller_new_game(BALDA_GAME_TYPE_ONE_PLAYER);
 }
 
 void balda_controller_main_menu_handler(int index)

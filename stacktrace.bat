@@ -1,0 +1,1 @@
+%POCKETBOOKSDK%\bin\awk '/^[0-9]/{print $2}' balda.exe.stackdump | addr2line -f -e balda.exe

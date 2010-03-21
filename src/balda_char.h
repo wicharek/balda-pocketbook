@@ -18,36 +18,25 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA .        *
  ***************************************************************************/
 
-#ifndef __BALDA_UTILS__H__
-#define __BALDA_UTILS__H__
+#ifndef __BALDA_CHAR_H__
+#define __BALDA_CHAR_H__
 
-#include <stdio.h>
+typedef unsigned char balda_char;
+static const balda_char BALDA_CHAR_NONE=0;
+#define BALDA_CHAR_NONE_IS_0
+#define BALDA_CHAR_MAX	32
 
-typedef int balda_bool;
+// Converts single balda char to utf-8 string
+void balda_single_char_to_utf8(balda_char bc, char* utf8_buffer, int utf8_buffer_size);
+// Converts balda char string to utf-8 string
+void balda_char_to_utf8(const balda_char* bc, char* utf8_buffer, int utf8_buffer_size);
+// Converts balda char string to utf-8 string lowercase
+void balda_char_to_utf8_lowercase(const balda_char* bc, char* utf8_buffer, int utf8_buffer_size);
+// Converts utf-8 char string to balda char string
+void balda_char_from_utf8(const char* utf8, balda_char* bc_buffer, int bc_buffer_size);
 
-#define balda_true	1
-#define balda_false	0
-
-#define debug_printf(a) printf a; printf("\n");
-
-typedef struct
-{
-	char buffer[33];
-} balda_int_converter_t;
-
-const char* balda_itoa(balda_int_converter_t*, int);
-
-typedef struct
-{
-	int x, y;
-} balda_point_t;
-
-balda_point_t balda_make_point(int x, int y);
-
-#define BALDA_SQR(x) ((x)*(x))
-#define BALDA_MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define BALDA_MAX(x, y) (((x) > (y)) ? (x) : (y))
-
-#define balda_points_equal(p1, p2) (((p1).x == (p2).x) && ((p1).y == (p2).y))
+int balda_char_strlen(const balda_char* bc);
+int balda_char_strcmp(const balda_char* bc1, const balda_char* bc2);
+void balda_char_strcpy(const balda_char* source, balda_char* dest);
 
 #endif
