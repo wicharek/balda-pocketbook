@@ -18,37 +18,19 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA .        *
  ***************************************************************************/
 
-#ifndef __BALDA_UTILS__H__
-#define __BALDA_UTILS__H__
+#ifndef __BALDA_TITLE_VIEW_H__
+#define __BALDA_TITLE_VIEW_H__
 
-#include <stdio.h>
+#include "balda_view.h"
+#include "balda_utils.h"
+#include "balda_config.h"
 
-typedef int balda_bool;
+struct balda_title_view_t_impl;
+typedef struct balda_title_view_t_impl balda_title_view_t;
 
-#define balda_true	1
-#define balda_false	0
+balda_title_view_t* balda_title_view_init(balda_view_t* view);
+void balda_title_view_free(balda_title_view_t* tv);
 
-#define debug_printf(a) printf a; printf("\n");
-
-typedef struct
-{
-	char buffer[33];
-} balda_int_converter_t;
-
-const char* balda_itoa(balda_int_converter_t*, int);
-
-typedef struct
-{
-	int x, y;
-} balda_point_t;
-
-balda_point_t balda_make_point(int x, int y);
-int balda_point_distance_squared(int x1, int y1, int x2, int y2);
-
-#define BALDA_SQR(x) ((x)*(x))
-#define BALDA_MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define BALDA_MAX(x, y) (((x) > (y)) ? (x) : (y))
-
-#define balda_points_equal(p1, p2) (((p1).x == (p2).x) && ((p1).y == (p2).y))
+void balda_title_view_show(balda_title_view_t* tv);
 
 #endif

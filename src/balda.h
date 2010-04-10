@@ -28,8 +28,24 @@
 #define BALDA_FIELD_WIDTH 5
 #define BALDA_FIELD_HEIGHT 5
 
+#define BALDA_MAX_SEQUENCE 	(BALDA_FIELD_WIDTH*BALDA_FIELD_HEIGHT)
+
 struct balda_t_impl;
 typedef struct balda_t_impl balda_t;
+
+typedef struct
+{
+	balda_point_t pos;
+} balda_sequence_entry_t;
+
+typedef struct
+{
+	balda_sequence_entry_t entries[BALDA_MAX_SEQUENCE];
+	int length;
+	balda_char insert_char;
+	balda_point_t insert_pos;
+	balda_char word[BALDA_MAX_SEQUENCE+1];
+} balda_sequence_t;
 
 static const int GAME_RESULT_NONE = -1;
 static const int GAME_RESULT_DRAW = 2;
@@ -115,16 +131,24 @@ balda_bool balda_is_active_player_ai(balda_t* balda);
 balda_char balda_get_letter_at(balda_t* balda, int x, int y);
 BALDA_ADD_LETTER_RESULT balda_can_add_letter_at(balda_t* balda, int x, int y);
 
-BALDA_SEQUENCE_START_RESULT balda_sequence_start(balda_t* balda, balda_point_t start_pos, balda_point_t insert_pos, balda_char insert_char);
-void balda_sequence_reset(balda_t* balda);
-BALDA_SEQUENCE_NEXT_RESULT balda_sequence_next(balda_t* balda, BALDA_DIRECTION direction);
-BALDA_TURN_RESULT balda_sequence_make_turn(balda_t* balda);
-void balda_sequence_rollback_last(balda_t* balda);
-int balda_sequence_length(balda_t* balda);
-balda_point_t balda_sequence_last_selected(balda_t* balda);
-balda_point_t balda_sequence_prelast_selected(balda_t* balda);
-const balda_char* balda_sequence_get_word(balda_t* balda);
+BALDA_SEQUENCE_START_RESULT balda_turn_sequence_start(balda_t* balda,
+	balda_point_t start_pos, balda_point_t insert_pos, balda_char insert_char,
+	balda_sequence_t* sequence);
+BALDA_SEQUENCE_NEXT_RESULT balda_turn_sequence_next(balda_t* balda, balda_sequence_t* sequence,
+	BALDA_DIRECTION direction);
+BALDA_TURN_RESULT balda_make_turn(balda_t* balda, balda_sequence_t* sequence);
 
 void balda_make_ai_turn(balda_t* balda);
+balda_sequence_t* balda_get_last_ai_sequence(balda_t* balda);	
+
+
+void balda_sequence_reset(balda_sequence_t* sequence);
+void balda_sequence_rollback_last(balda_sequence_t* sequence);
+balda_point_t balda_sequence_last_selected(balda_sequence_t* sequence);
+balda_point_t balda_sequence_prelast_selected(balda_sequence_t* sequence);
+const balda_char* balda_sequence_get_word(balda_sequence_t* sequence, balda_t* balda);
+balda_bool balda_sequence_contains_point(balda_sequence_t* sequence, int x, int y);
+
+#define balda_sequence_length(sequence) ((sequence)->length)
 
 #endif

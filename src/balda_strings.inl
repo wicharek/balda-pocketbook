@@ -37,6 +37,8 @@ BALDA_STRING(BALDA_STR_INSERT_CHAR_NOT_SELECTED_MESSAGE, "Выбранное с�
 BALDA_STRING(BALDA_STR_WORD_ALREADY_USED_TITLE, "Слово уже использовано")
 BALDA_STRING(BALDA_STR_WORD_ALREADY_USED_MESSAGE, "Слово \"%s\" уже было использовано в текущей игре. "
 	"Слово можно использовать только один раз за игру.")
+BALDA_STRING(BALDA_STR_ABOUT_TITLE, "Об игре")
+BALDA_STRING(BALDA_STR_ABOUT_MESSAGE, "Автор: Виталий Иванов\nПочта: wicharek@w2f2.com\nСайт: http://balda.w2f2.com")
 BALDA_STRING(BALDA_STR_DRAW, "Ничья!")
 BALDA_STRING(BALDA_STR_WINNER, "Победил:")
 BALDA_STRING(BALDA_STR_PRESS_TO_PLAY_AGAIN, "Нажмите любую кнопку, чтобы сыграть ещё раз")
@@ -44,6 +46,8 @@ BALDA_STRING(BALDA_STR_PRESS_TO_PLAY_AGAIN, "Нажмите любую кноп�
 
 BALDA_STRING(BALDA_STR_CAPTION_SURRENDER, "Сдаться")
 BALDA_STRING(BALDA_STR_CAPTION_BACK, "Отменить")
+BALDA_STRING(BALDA_STR_CAPTION_CONFIRM, "Готово")
+BALDA_STRING(BALDA_STR_CAPTION_NEXT, "Дальше")
 
 #ifdef BALDA_STRING_DEFINE_MACROS
 #define BALDA_STR_MENU_HEADER "Меню"
@@ -51,5 +55,6 @@ BALDA_STRING(BALDA_STR_CAPTION_BACK, "Отменить")
 #define BALDA_STR_MENU_NEW_GAME "Новая игра"
 #define BALDA_STR_MENU_ONE_PLAYER "Против компьютера"
 #define BALDA_STR_MENU_TWO_PLAYERS "Два игрока"
+#define BALDA_STR_MENU_ABOUT "Об игре"
 #define BALDA_STR_MENU_EXIT "Выход"
 #endif

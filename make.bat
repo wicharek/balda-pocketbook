@@ -5,7 +5,7 @@ pause
 set PATH=%POCKETBOOKSDK%\bin;%PATH%
 
 set INCLUDE=
-set LIBS=-linkview -lfreetype -ljpeg -lz -lgdi32
+set LIBS=-linkview -lfreetype -ljpeg -lz -lgdi32 -lcurl
 set OUTPUT=balda.exe
 
 rm -f %OUTPUT%

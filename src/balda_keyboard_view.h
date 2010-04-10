@@ -18,24 +18,35 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA .        *
  ***************************************************************************/
 
+#ifndef __BALDA_KEYBOARD_VIEW_H__
+#define __BALDA_KEYBOARD_VIEW_H__
+
+#include "balda_view.h"
 #include "balda_utils.h"
-#include <stdio.h>
 
-const char* balda_itoa(balda_int_converter_t* converter, int value)
-{
-	sprintf(converter->buffer, "%d", value);
-	return converter->buffer;
-}
+struct balda_keyboard_view_t_impl;
+typedef struct balda_keyboard_view_t_impl balda_keyboard_view_t;
 
-balda_point_t balda_make_point(int x, int y)
-{
-	balda_point_t p;
-	p.x = x;
-	p.y = y;
-	return p;
-}
+balda_keyboard_view_t* balda_keyboard_view_init(balda_view_t* view, balda_bool has_cancel_button);
+void balda_keyboard_view_free(balda_keyboard_view_t* kb);
+void balda_keyboard_view_draw(balda_keyboard_view_t* kb);
 
-int balda_point_distance_squared(int x1, int y1, int x2, int y2)
-{
-	return BALDA_SQR(x2 - x1) + BALDA_SQR(y2 - y1);
-}
+int balda_keyboard_view_x(balda_keyboard_view_t* kb);
+int balda_keyboard_view_y(balda_keyboard_view_t* kb);
+int balda_keyboard_view_w(balda_keyboard_view_t* kb);
+int balda_keyboard_view_h(balda_keyboard_view_t* kb);
+
+balda_bool balda_keyboard_view_get_button_at_point(balda_keyboard_view_t* kb, balda_point_t point,
+	balda_point_t* out_button_pos);
+
+void balda_keyboard_view_set_keyboard(balda_keyboard_view_t* kb, const balda_char* keyboard);
+void balda_keyboard_view_clear_selection(balda_keyboard_view_t* kb);
+void balda_keyboard_view_select(balda_keyboard_view_t* kb, int button_x, int button_y);
+void balda_keyboard_view_select_point(balda_keyboard_view_t* kb, balda_point_t pos);
+void balda_keyboard_view_select_delta(balda_keyboard_view_t* kb, int dx, int dy);
+balda_bool balda_keyboard_view_is_selected(balda_keyboard_view_t* kb);
+balda_char balda_keyboard_view_get_selected_char(balda_keyboard_view_t* kb);
+balda_point_t balda_keyboard_view_get_selection(balda_keyboard_view_t* kb);
+balda_bool balda_keyboard_view_is_back_selected(balda_keyboard_view_t* kb);
+
+#endif

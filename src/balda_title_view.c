@@ -18,37 +18,43 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA .        *
  ***************************************************************************/
 
-#ifndef __BALDA_UTILS__H__
-#define __BALDA_UTILS__H__
+#include "balda_title_view.h"
+#include "balda_strings.h"
+#include <inkview.h>
+#include <assert.h>
 
-#include <stdio.h>
-
-typedef int balda_bool;
-
-#define balda_true	1
-#define balda_false	0
-
-#define debug_printf(a) printf a; printf("\n");
-
-typedef struct
+struct balda_title_view_t_impl
 {
-	char buffer[33];
-} balda_int_converter_t;
+	balda_view_t* view;
+	ifont* font_version;
+};
 
-const char* balda_itoa(balda_int_converter_t*, int);
+extern const ibitmap img_logo;
 
-typedef struct
+balda_title_view_t* balda_title_view_init(balda_view_t* view)
 {
-	int x, y;
-} balda_point_t;
+	balda_title_view_t* tv = (balda_title_view_t*)malloc(sizeof(balda_title_view_t));
+	tv->view = view;
+	
+	tv->font_version = OpenFont("LiberationSans", 11, 1);
+	
+	return tv;
+}
 
-balda_point_t balda_make_point(int x, int y);
-int balda_point_distance_squared(int x1, int y1, int x2, int y2);
+void balda_title_view_free(balda_title_view_t* tv)
+{
+	CloseFont(tv->font_version);
 
-#define BALDA_SQR(x) ((x)*(x))
-#define BALDA_MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define BALDA_MAX(x, y) (((x) > (y)) ? (x) : (y))
+	free(tv);
+}
 
-#define balda_points_equal(p1, p2) (((p1).x == (p2).x) && ((p1).y == (p2).y))
-
-#endif
+void balda_title_view_show(balda_title_view_t* tv)
+{
+	// logo image
+	DrawBitmap((ScreenWidth() - img_logo.width) / 2, 16, &img_logo);
+	
+	// version
+	SetFont(tv->font_version, BLACK);
+	DrawString(ScreenWidth() - StringWidth(BALDA_APP_VERSION_STRING_FULL_RU) - 10, 10,
+		BALDA_APP_VERSION_STRING_FULL_RU);
+}

@@ -29,8 +29,8 @@
 #include "balda_dict.h"
 
 #define BALDA_PLAYER_NAME_BUFFER_SIZE 128
-#define BALDA_MAX_SEQUENCE 	(BALDA_FIELD_WIDTH*BALDA_FIELD_HEIGHT)
 #define BALDA_MAX_WORDS 	10
+#define BALDA_MAX_TURNS 	20
 
 extern balda_dict_data_t balda_dict_data[];
 
@@ -38,20 +38,6 @@ typedef struct
 {
 	balda_char letter;
 } balda_field_cell_t;
-
-typedef struct
-{
-	balda_point_t pos;
-} balda_sequence_entry_t;
-
-typedef struct
-{
-	balda_sequence_entry_t entries[BALDA_MAX_SEQUENCE];
-	int length;
-	balda_char insert_char;
-	balda_point_t insert_pos;
-	balda_char word[BALDA_MAX_SEQUENCE+1];
-} balda_sequence_t;
 
 typedef struct
 {
@@ -79,7 +65,7 @@ struct balda_t_impl
 	
 	int active_player;
 	
-	balda_sequence_t sequence;
+	//balda_sequence_t sequence;
 	balda_dict_t dict;
 	int winner;
 	int turns_left;
@@ -92,12 +78,12 @@ void balda_sequence_copy(balda_sequence_t* to, const balda_sequence_t* from)
 	memcpy(to, from, sizeof(balda_sequence_t));
 }
 
-void balda_sequence_reset_impl(balda_sequence_t* sequence)
+void balda_sequence_reset(balda_sequence_t* sequence)
 {
 	sequence->length = 0;
 }
 
-balda_bool balda_sequence_contains_point_impl(balda_sequence_t* sequence, int x, int y)
+balda_bool balda_sequence_contains_point(balda_sequence_t* sequence, int x, int y)
 {
 	int i;
 	for (i=0; i<sequence->length; ++i)
@@ -109,7 +95,7 @@ balda_bool balda_sequence_contains_point_impl(balda_sequence_t* sequence, int x,
 	return balda_false;
 }
 
-BALDA_SEQUENCE_NEXT_RESULT balda_sequence_next_impl(balda_sequence_t* sequence, BALDA_DIRECTION direction,
+BALDA_SEQUENCE_NEXT_RESULT balda_sequence_next(balda_sequence_t* sequence, BALDA_DIRECTION direction,
 	balda_field_cell_t field[BALDA_FIELD_WIDTH][BALDA_FIELD_HEIGHT])
 {
 	assert(sequence);
@@ -190,7 +176,12 @@ const balda_char* balda_sequence_get_word_impl(balda_sequence_t* sequence,
 	return sequence->word;
 }
 
-void balda_sequence_rollback_last_impl(balda_sequence_t* sequence)
+const balda_char* balda_sequence_get_word(balda_sequence_t* sequence, balda_t* balda)
+{
+	return balda_sequence_get_word_impl(sequence, balda->field);
+}
+
+void balda_sequence_rollback_last(balda_sequence_t* sequence)
 {
 	printf("balda_sequence_rollback_last\n");
 	
@@ -200,9 +191,7 @@ void balda_sequence_rollback_last_impl(balda_sequence_t* sequence)
 	}
 }
 
-#define balda_sequence_length_impl(sequence) ((sequence)->length)
-
-balda_point_t balda_sequence_last_selected_impl(balda_sequence_t* sequence)
+balda_point_t balda_sequence_last_selected(balda_sequence_t* sequence)
 {
 	if (sequence->length > 0)
 	{
@@ -212,7 +201,7 @@ balda_point_t balda_sequence_last_selected_impl(balda_sequence_t* sequence)
 	return balda_make_point(-1, -1);
 }
 
-balda_point_t balda_sequence_prelast_selected_impl(balda_sequence_t* sequence)
+balda_point_t balda_sequence_prelast_selected(balda_sequence_t* sequence)
 {
 	if (sequence->length > 1)
 	{
@@ -249,7 +238,9 @@ void balda_free(balda_t* balda)
 	free(balda);
 }
 
-BALDA_SEQUENCE_START_RESULT balda_sequence_start(balda_t* balda, balda_point_t start_pos, balda_point_t insert_pos, balda_char insert_char)
+BALDA_SEQUENCE_START_RESULT balda_turn_sequence_start(balda_t* balda,
+	balda_point_t start_pos, balda_point_t insert_pos, balda_char insert_char,
+	balda_sequence_t* sequence)
 {
 	assert(insert_char != BALDA_CHAR_NONE);
 	assert(start_pos.x >= 0 && start_pos.x < BALDA_FIELD_WIDTH
@@ -264,47 +255,18 @@ BALDA_SEQUENCE_START_RESULT balda_sequence_start(balda_t* balda, balda_point_t s
 		return BALDA_SEQUENCE_START_RESULT_FAIL_EMPTY_CELL;
 	}
 	
-	balda->sequence.length = 1;
-	balda->sequence.entries[0].pos = start_pos;
-	balda->sequence.insert_char = insert_char;
-	balda->sequence.insert_pos = insert_pos;
+	sequence->length = 1;
+	sequence->entries[0].pos = start_pos;
+	sequence->insert_char = insert_char;
+	sequence->insert_pos = insert_pos;
 	
 	return BALDA_SEQUENCE_START_RESULT_OK;
 }
 
-void balda_sequence_reset(balda_t* balda)
+BALDA_SEQUENCE_NEXT_RESULT balda_turn_sequence_next(balda_t* balda, balda_sequence_t* sequence,
+	BALDA_DIRECTION direction)
 {
-	balda_sequence_reset_impl(&balda->sequence);
-}
-
-BALDA_SEQUENCE_NEXT_RESULT balda_sequence_next(balda_t* balda, BALDA_DIRECTION direction)
-{
-	return balda_sequence_next_impl(&balda->sequence, direction, balda->field);
-}
-
-const balda_char* balda_sequence_get_word(balda_t* balda)
-{
-	return balda_sequence_get_word_impl(&balda->sequence, balda->field);
-}
-
-void balda_sequence_rollback_last(balda_t* balda)
-{
-	balda_sequence_rollback_last_impl(&balda->sequence);
-}
-
-int balda_sequence_length(balda_t* balda)
-{
-	return balda_sequence_length_impl(&balda->sequence);
-}
-
-balda_point_t balda_sequence_last_selected(balda_t* balda)
-{
-	return balda_sequence_last_selected_impl(&balda->sequence);
-}
-
-balda_point_t balda_sequence_prelast_selected(balda_t* balda)
-{
-	return balda_sequence_prelast_selected_impl(&balda->sequence);
+	return balda_sequence_next(sequence, direction, balda->field);
 }
 
 void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type)
@@ -313,7 +275,7 @@ void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type)
 	
 	balda->state = BALDA_STATE_PLAYING;
 	balda->game_type = type;
-	balda->turns_left = 20;
+	balda->turns_left = BALDA_MAX_TURNS;
 	
 	balda->player_score[0] = 0;
 	balda->player_score[1] = 0;
@@ -321,8 +283,8 @@ void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type)
 	balda->player_word_lists[0].length = 0;
 	balda->player_word_lists[1].length = 0;
 	
-	//balda->active_player = rand() % 2;
-	balda->active_player = 1; // TEST: ai
+	balda->active_player = rand() % 2;
+	//balda->active_player = 1; // TEST: ai
 	
 	// peek initial word
 	balda_bool peeked = balda_dict_peek_word_5(&balda->dict, balda->initial_word);
@@ -349,7 +311,7 @@ void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type)
 	}
 	//balda->field[2][3].letter = 0;
 	
-	balda_sequence_reset(balda);
+	//balda_current_sequence_reset(balda);
 }
 
 void balda_surrender(balda_t* balda)
@@ -377,7 +339,8 @@ int balda_get_active_player(balda_t* balda)
 
 int balda_get_previous_active_player(balda_t* balda)
 {
-	return (balda->active_player + 1) % 2;
+	return (balda->turns_left == BALDA_MAX_TURNS) ?
+		(-1) : ((balda->active_player + 1) % 2);
 }
 
 balda_bool balda_is_active_player_ai(balda_t* balda)
@@ -399,7 +362,7 @@ BALDA_ADD_LETTER_RESULT balda_can_add_letter_at(balda_t* balda, int x, int y)
 	if (!((x > 0 && balda->field[x-1][y].letter != BALDA_CHAR_NONE) ||
 		(y > 0 && balda->field[x][y-1].letter != BALDA_CHAR_NONE) ||
 		(x < BALDA_FIELD_WIDTH-1 && balda->field[x+1][y].letter != BALDA_CHAR_NONE) ||
-		(y < BALDA_FIELD_HEIGHT && balda->field[x][y+1].letter != BALDA_CHAR_NONE)))
+		(y < BALDA_FIELD_HEIGHT-1 && balda->field[x][y+1].letter != BALDA_CHAR_NONE)))
 	{
 		return BALDA_ADD_LETTER_RESULT_FAIL_NOT_NEAR;
 	}
@@ -436,13 +399,16 @@ void balda_after_turn(balda_t* balda, const balda_char* word)
 	++balda->player_word_lists[balda->active_player].length;
 	
 	balda->player_score[balda->active_player] += balda_char_strlen(word);
-	balda->active_player = (balda->active_player + 1) % 2;
 	
 	if (balda->turns_left == 0)
 	{
 		balda->state = BALDA_STATE_GAMEOVER;
 		balda->winner = (balda->player_score[0] > balda->player_score[1]) ? 0 :
 			((balda->player_score[0] == balda->player_score[1]) ? GAME_RESULT_DRAW : 1);
+	}
+	else
+	{
+		balda->active_player = (balda->active_player + 1) % 2;
 	}
 }
 
@@ -465,19 +431,19 @@ balda_bool balda_was_word_used(balda_t* balda, const balda_char* word)
 	return balda_false;
 }
 
-BALDA_TURN_RESULT balda_sequence_make_turn(balda_t* balda)
+BALDA_TURN_RESULT balda_make_turn(balda_t* balda, balda_sequence_t* sequence)
 {
 	balda_bool word_found;
 	
-	if (balda->sequence.length < 2)
+	if (sequence->length < 2)
 		return BALDA_TURN_RESULT_TOO_SHORT;
-	const balda_char* word = balda_sequence_get_word(balda);
+	const balda_char* word = balda_sequence_get_word(sequence, balda);
 	
 	int i;
 	balda_bool insert_selected = 0;
-	for (i=0; i<balda->sequence.length; ++i)
+	for (i=0; i<sequence->length; ++i)
 	{
-		if (balda_points_equal(balda->sequence.entries[i].pos, balda->sequence.insert_pos))
+		if (balda_points_equal(sequence->entries[i].pos, sequence->insert_pos))
 		{
 			insert_selected = 1;
 			break;
@@ -499,9 +465,7 @@ BALDA_TURN_RESULT balda_sequence_make_turn(balda_t* balda)
 	if (balda_was_word_used(balda, word))
 		return BALDA_TURN_RESULT_WORD_ALREADY_USED;
 		
-		
-	balda_sequence_reset(balda);
-	balda->field[balda->sequence.insert_pos.x][balda->sequence.insert_pos.y].letter = balda->sequence.insert_char;
+	balda->field[sequence->insert_pos.x][sequence->insert_pos.y].letter = sequence->insert_char;
 	balda_after_turn(balda, word);
 	
 	return BALDA_TURN_RESULT_OK;
@@ -536,7 +500,7 @@ void balda_ai_find_best_word_callback(balda_t* balda,
 		{
 			// longer word was found
 			if (local_sequence->length > context->current_sequence.length
-				&& balda_sequence_contains_point_impl(local_sequence, local_sequence->insert_pos.x, local_sequence->insert_pos.y)
+				&& balda_sequence_contains_point(local_sequence, local_sequence->insert_pos.x, local_sequence->insert_pos.y)
 				&& !balda_was_word_used(balda, local_sequence->word))
 			{
 				balda_sequence_copy(&context->current_sequence, local_sequence);
@@ -548,7 +512,7 @@ void balda_ai_find_best_word_callback(balda_t* balda,
 			// continue traversing
 			// up
 			if (y > 0 && balda_field_is_letter_at_impl(x, y-1, context->field)
-				&& !balda_sequence_contains_point_impl(local_sequence, x, y-1))
+				&& !balda_sequence_contains_point(local_sequence, x, y-1))
 			{
 				balda_ai_find_best_word_callback(balda, local_sequence, x, y-1,
 					&e.next_chunk);
@@ -556,7 +520,7 @@ void balda_ai_find_best_word_callback(balda_t* balda,
 			
 			// down
 			if (y < BALDA_FIELD_HEIGHT-1 && balda_field_is_letter_at_impl(x, y+1, context->field)
-				&& !balda_sequence_contains_point_impl(local_sequence, x, y+1))
+				&& !balda_sequence_contains_point(local_sequence, x, y+1))
 			{
 				balda_ai_find_best_word_callback(balda, local_sequence, x, y+1,
 					&e.next_chunk);
@@ -564,7 +528,7 @@ void balda_ai_find_best_word_callback(balda_t* balda,
 			
 			// left
 			if (x > 0 && balda_field_is_letter_at_impl(x-1, y, context->field)
-				&& !balda_sequence_contains_point_impl(local_sequence, x-1, y))
+				&& !balda_sequence_contains_point(local_sequence, x-1, y))
 			{
 				balda_ai_find_best_word_callback(balda, local_sequence, x-1, y,
 					&e.next_chunk);
@@ -572,7 +536,7 @@ void balda_ai_find_best_word_callback(balda_t* balda,
 			
 			// right
 			if (x < BALDA_FIELD_WIDTH-1 && balda_field_is_letter_at_impl(x+1, y, context->field)
-				&& !balda_sequence_contains_point_impl(local_sequence, x+1, y))
+				&& !balda_sequence_contains_point(local_sequence, x+1, y))
 			{
 				balda_ai_find_best_word_callback(balda, local_sequence, x+1, y,
 					&e.next_chunk);
@@ -596,7 +560,7 @@ void balda_ai_find_best_word(balda_t* balda, balda_dict_t* dict)
 	balda_dict_chunk_t dict_chunk;
 	
 	// reset sequences
-	balda_sequence_reset_impl(&context->current_sequence);
+	balda_sequence_reset(&context->current_sequence);
 	// init local sequence
 	local_sequence.insert_pos = context->current_sequence.insert_pos;
 	local_sequence.insert_char = context->current_sequence.insert_char;
@@ -609,13 +573,18 @@ void balda_ai_find_best_word(balda_t* balda, balda_dict_t* dict)
 		{
 			if (balda_field_is_letter_at_impl(x, y, context->field))
 			{
-				balda_sequence_reset_impl(&local_sequence);
+				balda_sequence_reset(&local_sequence);
 				
 				balda_dict_get_root_chunk(dict, &dict_chunk);
 				balda_ai_find_best_word_callback(balda, &local_sequence, x, y, &dict_chunk);
 			}
 		}
 	}
+}
+
+balda_sequence_t* balda_get_last_ai_sequence(balda_t* balda)
+{
+	return &balda->ai_search_context.best_sequence;
 }
 
 void balda_make_ai_turn(balda_t* balda)
@@ -628,13 +597,40 @@ void balda_make_ai_turn(balda_t* balda)
 	// make a copy of field for faster access (due to insert char)
 	memcpy(&balda->ai_search_context.field, &balda->field, sizeof(balda->field));
 	// reset best sequence
-	balda_sequence_reset_impl(&balda->ai_search_context.best_sequence);
+	balda_sequence_reset(&balda->ai_search_context.best_sequence);
 	
 	// loop through all cells suitable for inserting
-	int x, y;
-	for (x=0; x<BALDA_FIELD_WIDTH; ++x)
+	// random loop order
+	int x, y, x0, xm, dx, y0, ym, dy;
+	if (rand() % 2)
 	{
-		for (y=0; y<BALDA_FIELD_HEIGHT; ++y)
+		x0 = 0;
+		xm = BALDA_FIELD_WIDTH-1;
+		dx = 1;
+	}
+	else
+	{
+		x0 = BALDA_FIELD_WIDTH-1;
+		xm = 0;
+		dx = -1;
+	}
+	
+	if (rand() % 2)
+	{
+		y0 = 0;
+		ym = BALDA_FIELD_HEIGHT-1;
+		dy = 1;
+	}
+	else
+	{
+		y0 = BALDA_FIELD_HEIGHT-1;
+		ym = 0;
+		dy = -1;
+	}
+	
+	for (x=x0; x!=xm; x += dx)
+	{
+		for (y=y0; y!=ym; y += dy)
 		{
 			if (balda_field_no_letter_at(x, y) &&
 				((x > 0 && balda_field_is_letter_at(x-1, y)) || 

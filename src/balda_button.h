@@ -18,28 +18,38 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA .        *
  ***************************************************************************/
 
-#ifndef __BALDA_CONTROLLER_H__
-#define __BALDA_CONTROLLER_H__
+#ifndef __BALDA_BUTTON_H__
+#define __BALDA_BUTTON_H__
 
-#include "balda.h"
+#include "balda_utils.h"
+#include "balda_view.h"
+
+static const int BALDA_BUTTON_WIDTH = 208;
+static const int BALDA_BUTTON_HEIGHT = 40;
+static const int BALDA_BUTTON_MARGIN = 1;
+static const int BALDA_BUTTON_ICON_PADDING = 16;
+static const int BALDA_BUTTON_ICON_CAPTIONS_OFFSET = 12;
+
+struct balda_button_t_impl;
+typedef struct balda_button_t_impl balda_button_t;
 
 typedef enum
 {
-	BALDA_TURN_STAGE_SELECT_POS,
-	BALDA_TURN_STAGE_SELECT_LETTER,
-	BALDA_TURN_STAGE_SELECT_FIRST,
-	BALDA_TURN_STAGE_DEFINE_WORD,
-	BALDA_TURN_STAGE_AFTER_AI_TURN
-} BALDA_TURN_STAGE;
+	BALDA_BUTTON_MODE_SURRENDER,
+	BALDA_BUTTON_MODE_BACK,
+	BALDA_BUTTON_MODE_CONFIRM,
+	BALDA_BUTTON_MODE_NEXT
+} BALDA_BUTTON_MODE;
 
-typedef enum
-{
-	BALDA_UI_TYPE_KEYS,
-	BALDA_UI_TYPE_TOUCHSCREEN
-} BALDA_UI_TYPE;
+balda_button_t* balda_button_init(balda_view_t* view, balda_point_t pos);
+void balda_button_free(balda_button_t* button);
 
-void balda_controller_init(balda_t*);
-void balda_controller_free();
-int balda_controller_handler(int type, int par1, int par2);
+balda_bool balda_button_contains_point(balda_button_t* button, balda_point_t point);
+
+void balda_button_set_mode(balda_button_t* button, BALDA_BUTTON_MODE mode);
+void balda_button_set_visible(balda_button_t* button, balda_bool visible);
+void balda_button_set_selected(balda_button_t* button, balda_bool selected);
+
+void balda_button_redraw(balda_button_t* button, balda_bool force);
 
 #endif

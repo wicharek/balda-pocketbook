@@ -229,6 +229,7 @@ void balda_char_strcpy(const balda_char* source, balda_char* dest)
 		++dest;
 	}
 	while (*source != BALDA_CHAR_NONE);
+	*dest = BALDA_CHAR_NONE;
 }
 
 int balda_char_strcmp(const balda_char* bc1, const balda_char* bc2)

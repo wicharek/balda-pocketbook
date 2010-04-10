@@ -29,6 +29,7 @@ int main(int argc, char **argv)
 	
 	InkViewMain(balda_controller_handler);
 	
+	balda_controller_free();
 	balda_free(balda);
 	return 0;
 }
