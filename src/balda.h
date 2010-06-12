@@ -65,6 +65,13 @@ typedef enum
 
 typedef enum
 {
+	BALDA_GAME_DIFFICULTY_EASY,
+	BALDA_GAME_DIFFICULTY_NORMAL,
+	BALDA_GAME_DIFFICULTY_HARD
+} BALDA_GAME_DIFFICULTY;
+
+typedef enum
+{
 	BALDA_ADD_LETTER_RESULT_OK,
 	BALDA_ADD_LETTER_RESULT_FAIL_NOT_EMPTY_CELL,
 	BALDA_ADD_LETTER_RESULT_FAIL_NOT_NEAR
@@ -112,6 +119,7 @@ void balda_free(balda_t*);
 
 BALDA_STATE balda_get_state(balda_t* balda);
 BALDA_GAME_TYPE balda_get_game_type(balda_t* balda);
+void balda_set_game_difficulty(balda_t* balda, BALDA_GAME_DIFFICULTY game_difficulty);
 
 void balda_new_game(balda_t* balda, BALDA_GAME_TYPE type);
 void balda_surrender(balda_t* balda);

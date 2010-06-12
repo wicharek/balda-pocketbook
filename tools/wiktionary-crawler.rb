@@ -30,7 +30,7 @@ page_num = 0
 word_num = 0
 
 puts "Started"
-f = File.open('words.txt', 'w')
+f = File.open('words_raw.txt', 'w')
 
 while path
 	res = Net::HTTP.start('ru.wiktionary.org', 80) {|http|

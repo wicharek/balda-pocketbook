@@ -112,8 +112,8 @@ void balda_view_free(balda_view_t* view)
 
 void balda_view_invalidate(balda_view_t* view, int x, int y, int w, int h, balda_bool bw)
 {
-	debug_printf(("balda_view_invalidate: %s(%d, %d, %d, %d)",
-				bw ? "BW" : "GS", x, y, w, h));
+	//debug_printf(("balda_view_invalidate: %s(%d, %d, %d, %d)",
+	//			bw ? "BW" : "GS", x, y, w, h));
 	
 	if (bw)
 		balda_view_redraw_region_add(&view->bw_region, x, y, w, h);
@@ -127,16 +127,16 @@ void balda_view_update(balda_view_t* view)
 	balda_view_redraw_region_union(&view->bw_region, &view->gs_region, &united);
 	int united_area = balda_view_redraw_region_area(&united);
 	
-	debug_printf(("view->gs_region: (%d)(%d, %d, %d, %d)",
+	/*debug_printf(("view->gs_region: (%d)(%d, %d, %d, %d)",
 				view->gs_region.valid, view->gs_region.left, view->gs_region.top, view->gs_region.right, view->gs_region.bottom));
 	debug_printf(("view->bw_region: (%d)(%d, %d, %d, %d)",
 				view->bw_region.valid, view->bw_region.left, view->bw_region.top, view->bw_region.right, view->bw_region.bottom));
 	debug_printf(("united: (%d)(%d, %d, %d, %d)",
-				united.valid, united.left, united.top, united.right, united.bottom));
+				united.valid, united.left, united.top, united.right, united.bottom));*/
 	
 	if (united_area && united_area > (((ScreenWidth() * ScreenHeight()) * 95) / 100))
 	{
-		debug_printf(("balda_view_update: FULL"));
+		//debug_printf(("balda_view_update: FULL"));
 		FullUpdate();
 		
 		view->bw_region.valid = balda_false;
@@ -146,10 +146,10 @@ void balda_view_update(balda_view_t* view)
 	{
 		if (view->bw_region.valid)
 		{
-			debug_printf(("balda_view_update: PARTIAL_BW(%d, %d, %d, %d)",
+			/*debug_printf(("balda_view_update: PARTIAL_BW(%d, %d, %d, %d)",
 				view->bw_region.left, view->bw_region.top,
 				view->bw_region.right - view->bw_region.left,
-				view->bw_region.bottom - view->bw_region.top));
+				view->bw_region.bottom - view->bw_region.top));*/
 			
 			PartialUpdateBW(view->bw_region.left, view->bw_region.top,
 				view->bw_region.right - view->bw_region.left,
@@ -160,10 +160,10 @@ void balda_view_update(balda_view_t* view)
 		
 		if (view->gs_region.valid)
 		{
-			debug_printf(("balda_view_update: PARTIAL_GS(%d, %d, %d, %d)",
+			/*debug_printf(("balda_view_update: PARTIAL_GS(%d, %d, %d, %d)",
 				view->gs_region.left, view->gs_region.top,
 				view->gs_region.right-view->gs_region.left,
-				view->gs_region.bottom-view->gs_region.top));
+				view->gs_region.bottom-view->gs_region.top));*/
 			
 			PartialUpdate(view->gs_region.left, view->gs_region.top,
 				view->gs_region.right-view->gs_region.left,

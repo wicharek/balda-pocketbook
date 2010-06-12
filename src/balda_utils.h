@@ -45,6 +45,9 @@ typedef struct
 balda_point_t balda_make_point(int x, int y);
 int balda_point_distance_squared(int x1, int y1, int x2, int y2);
 
+double rand_normal();
+double rand_normal_with_interval(double interval);
+
 #define BALDA_SQR(x) ((x)*(x))
 #define BALDA_MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define BALDA_MAX(x, y) (((x) > (y)) ? (x) : (y))

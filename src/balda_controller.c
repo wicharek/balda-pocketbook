@@ -38,8 +38,15 @@ const char* balda_abvgde_keyboard_ru = "АБВГДЕЖЗИЙКЛМНОПРСТУ
 
 static imenu new_game_menu[] = {
 	{ ITEM_ACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
-	//{ ITEM_INACTIVE, 111, BALDA_STR_MENU_ONE_PLAYER, NULL },
 	{ ITEM_ACTIVE, 112, BALDA_STR_MENU_TWO_PLAYERS, NULL },
+	
+	{ 0, 0, NULL, NULL }
+};
+
+static imenu difficulty_menu[] = {
+	{ ITEM_ACTIVE, 121, BALDA_STR_MENU_DIFFICULTY_EASY, NULL },
+	{ ITEM_BULLET, 122, BALDA_STR_MENU_DIFFICULTY_NORMAL, NULL },
+	{ ITEM_ACTIVE, 123, BALDA_STR_MENU_DIFFICULTY_HARD, NULL },
 	
 	{ 0, 0, NULL, NULL }
 };
@@ -48,6 +55,7 @@ static imenu main_menu[] = {
 	{ ITEM_HEADER, 0, BALDA_STR_MENU_HEADER, NULL },
 	{ ITEM_ACTIVE, 101, BALDA_STR_MENU_RESUME, NULL },
 	{ ITEM_SUBMENU, 110, BALDA_STR_MENU_NEW_GAME, new_game_menu },
+	{ ITEM_SUBMENU, 120, BALDA_STR_MENU_DIFFICULTY, difficulty_menu },
 	{ ITEM_ACTIVE, 140, BALDA_STR_MENU_ABOUT, NULL },
 	{ ITEM_ACTIVE, 150, BALDA_STR_MENU_EXIT, NULL },
 	
@@ -107,8 +115,10 @@ void balda_controller_init(balda_t* balda)
 	}
 	else
 	{
-		// TODO: Check model
-		
+		if (strcmp(GetDeviceModel(), "PocketBook 302") == 0)
+			g_balda_controller.ui_type = BALDA_UI_TYPE_TOUCHSCREEN;
+		else
+			g_balda_controller.ui_type = BALDA_UI_TYPE_KEYS;
 	}
 }
 
@@ -145,14 +155,14 @@ void balda_controller_new_game(BALDA_GAME_TYPE type)
 	balda_controller_on_game_started();
 }
 
-void balda_controller_redraw_after_turn()
+void balda_controller_redraw_after_turn(balda_bool first)
 {
 	int i, prev_i = balda_get_previous_active_player(g_balda_controller.balda);
 	for (i=0; i<2; ++i)
 	{
 		balda_player_view_update_active(g_balda_controller.player_view[i]);
 		
-		if (i == prev_i || prev_i < 0)
+		if (i == prev_i || first)
 		{
 			balda_player_view_update_score(g_balda_controller.player_view[i]);
 			balda_player_view_draw_last_word(g_balda_controller.player_view[i]);
@@ -167,7 +177,7 @@ void balda_controller_next_turn(balda_bool first)
 	
 	if (g_balda_controller.turn_stage != BALDA_TURN_STAGE_AFTER_AI_TURN)
 	{
-		balda_controller_redraw_after_turn();
+		balda_controller_redraw_after_turn(first);
 	}
 	
 	if (!first)
@@ -190,12 +200,16 @@ void balda_controller_next_turn(balda_bool first)
 		
 		if (balda_is_game_over(g_balda_controller.balda))
 		{
+			int active_player = balda_get_active_player(g_balda_controller.balda);
+			balda_player_view_update_score(g_balda_controller.player_view[active_player]);
+			balda_player_view_draw_last_word(g_balda_controller.player_view[active_player]);
+			
 			balda_controller_on_game_over();
 		}
 		else
 		{
 			g_balda_controller.turn_stage = BALDA_TURN_STAGE_AFTER_AI_TURN;
-			balda_controller_redraw_after_turn();
+			balda_controller_redraw_after_turn(first);
 		}
 	}
 	else
@@ -207,6 +221,10 @@ void balda_controller_next_turn(balda_bool first)
 		
 		if (balda_is_game_over(g_balda_controller.balda))
 		{
+			int active_player = balda_get_active_player(g_balda_controller.balda);
+			balda_player_view_update_score(g_balda_controller.player_view[active_player]);
+			balda_player_view_draw_last_word(g_balda_controller.player_view[active_player]);
+			
 			balda_controller_on_game_over();
 		}
 		else
@@ -257,7 +275,7 @@ void balda_controller_on_game_started()
 	balda_player_view_draw(g_balda_controller.player_view[1]);
 	balda_title_view_show(g_balda_controller.title_view);
 	
-	DrawString(0, 0, GetDeviceModel());
+	//DrawString(0, 0, GetDeviceModel());
 	
 	FullUpdate();
 	FineUpdate();
@@ -275,6 +293,12 @@ void balda_controller_on_game_over()
 void balda_controller_on_evt_init()
 {
 	g_balda_controller.is_initialized = 1;
+	
+	/*int i;
+	for (i=0; i<100; ++i)
+	{
+		debug_printf(("rand_normal: %f", rand_normal_with_interval(3.0)));
+	}*/
 	
 	// initialize views
 	g_balda_controller.view = balda_view_init(g_balda_controller.balda);
@@ -310,8 +334,15 @@ void balda_controller_on_evt_show()
 	//ClearScreen();
 	//FullUpdate();
 	
-	balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
-	//balda_controller_new_game(BALDA_GAME_TYPE_ONE_PLAYER);
+	//balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
+	balda_controller_new_game(BALDA_GAME_TYPE_ONE_PLAYER);
+}
+
+void balda_controller_set_difficulty_bullet(int index)
+{
+	int i;
+	for (i=0 ;i<3; ++i)
+		difficulty_menu[i].type = (i == index) ? ITEM_BULLET : ITEM_ACTIVE;
 }
 
 void balda_controller_main_menu_handler(int index)
@@ -328,6 +359,21 @@ void balda_controller_main_menu_handler(int index)
 		
 		case 112: // New game -> Two players
 			balda_controller_new_game(BALDA_GAME_TYPE_TWO_PLAYERS);
+		break;
+		
+		case 121: // Easy
+			balda_set_game_difficulty(g_balda_controller.balda, BALDA_GAME_DIFFICULTY_EASY);
+			balda_controller_set_difficulty_bullet(0);
+		break;
+		
+		case 122: // Normal
+			balda_set_game_difficulty(g_balda_controller.balda, BALDA_GAME_DIFFICULTY_NORMAL);
+			balda_controller_set_difficulty_bullet(1);
+		break;
+		
+		case 123: // Hard
+			balda_set_game_difficulty(g_balda_controller.balda, BALDA_GAME_DIFFICULTY_HARD);
+			balda_controller_set_difficulty_bullet(2);
 		break;
 		
 		case 140: // About
@@ -582,6 +628,39 @@ balda_bool balda_controller_try_make_turn()
 	return 0;
 }
 
+void balda_controller_back_from_letter_select()
+{
+	balda_field_view_select(g_balda_controller.field_view, g_balda_controller.field_pos);
+	balda_field_view_remove_insert_char(g_balda_controller.field_view);
+	balda_keyboard_view_clear_selection(g_balda_controller.kb_view);
+	
+	balda_button_set_mode(g_balda_controller.btn_cancel, BALDA_BUTTON_MODE_SURRENDER);
+	balda_button_redraw(g_balda_controller.btn_cancel, 0);
+	
+	g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_POS;
+}
+
+void balda_controller_back_from_select_first()
+{
+	balda_keyboard_view_select(g_balda_controller.kb_view,
+		g_balda_controller.kb_pos.x, g_balda_controller.kb_pos.y);
+	
+	balda_button_set_selected(g_balda_controller.btn_cancel, 0);
+	balda_button_redraw(g_balda_controller.btn_cancel, 0);
+	g_balda_controller.field_pos = balda_field_view_get_insert_char_pos(g_balda_controller.field_view);
+	
+	g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_LETTER;
+}
+
+void balda_controller_back_from_define_word()
+{
+	balda_sequence_reset(&g_balda_controller.sequence);
+	balda_field_view_replace_sequence_with_select(g_balda_controller.field_view,
+		g_balda_controller.field_pos);
+	
+	g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_FIRST;
+}
+
 void balda_controller_on_key_pressed(int key)
 {
 	if (key != KEY_MENU && balda_is_game_over(g_balda_controller.balda))
@@ -607,6 +686,48 @@ void balda_controller_on_key_pressed(int key)
 			
 			case KEY_UP: case KEY_DOWN: case KEY_LEFT: case KEY_RIGHT:
 				balda_controller_on_cursor_key_pressed(key);
+			break;
+			
+			/*case KEY_BACK:
+			{
+				CloseApp();
+			}
+			break;*/
+			
+			case KEY_PREV:
+			{
+				switch (g_balda_controller.turn_stage)
+				{
+					case BALDA_TURN_STAGE_SELECT_POS:
+						// do nothing
+					break;
+					
+					case BALDA_TURN_STAGE_SELECT_LETTER:
+					{
+						// Go back to select pos
+						balda_controller_back_from_letter_select();
+					}
+					break;
+					
+					case BALDA_TURN_STAGE_SELECT_FIRST:
+					{
+						balda_controller_back_from_select_first();
+					}
+					break;
+					
+					case BALDA_TURN_STAGE_DEFINE_WORD:
+					{
+						balda_controller_back_from_define_word();
+					}
+					break;
+					
+					case BALDA_TURN_STAGE_AFTER_AI_TURN:
+					{
+						// ignore
+					}
+					break;
+				}
+			}
 			break;
 			
 			case KEY_OK:
@@ -650,15 +771,8 @@ void balda_controller_on_key_pressed(int key)
 						g_balda_controller.kb_pos = balda_keyboard_view_get_selection(g_balda_controller.kb_view);
 						if (balda_keyboard_view_is_back_selected(g_balda_controller.kb_view))
 						{
-							// Go back to pos selection
-							balda_field_view_select(g_balda_controller.field_view, g_balda_controller.field_pos);
-							balda_field_view_remove_insert_char(g_balda_controller.field_view);
-							balda_keyboard_view_clear_selection(g_balda_controller.kb_view);
-							
-							balda_button_set_mode(g_balda_controller.btn_cancel, BALDA_BUTTON_MODE_SURRENDER);
-							balda_button_redraw(g_balda_controller.btn_cancel, 0);
-							
-							g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_POS;
+							// Go back to select pos
+							balda_controller_back_from_letter_select();
 						}
 						else
 						{
@@ -683,14 +797,7 @@ void balda_controller_on_key_pressed(int key)
 						if (g_balda_controller.field_pos.y == BALDA_FIELD_HEIGHT)
 						{
 							// No, "Back" was pressed
-							balda_keyboard_view_select(g_balda_controller.kb_view,
-								g_balda_controller.kb_pos.x, g_balda_controller.kb_pos.y);
-							
-							balda_button_set_selected(g_balda_controller.btn_cancel, 0);
-							balda_button_redraw(g_balda_controller.btn_cancel, 0);
-							g_balda_controller.field_pos = balda_field_view_get_insert_char_pos(g_balda_controller.field_view);
-							
-							g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_LETTER;
+							balda_controller_back_from_select_first();
 						}
 						else
 						{
@@ -713,11 +820,7 @@ void balda_controller_on_key_pressed(int key)
 						else
 						{
 							// Cancel selecting
-							balda_sequence_reset(&g_balda_controller.sequence);
-							balda_field_view_replace_sequence_with_select(g_balda_controller.field_view,
-								g_balda_controller.field_pos);
-							
-							g_balda_controller.turn_stage = BALDA_TURN_STAGE_SELECT_FIRST;
+							balda_controller_back_from_define_word();
 						}
 					}
 					break;

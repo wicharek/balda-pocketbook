@@ -55,6 +55,11 @@ BALDA_STRING(BALDA_STR_CAPTION_NEXT, "Дальше")
 #define BALDA_STR_MENU_NEW_GAME "Новая игра"
 #define BALDA_STR_MENU_ONE_PLAYER "Против компьютера"
 #define BALDA_STR_MENU_TWO_PLAYERS "Два игрока"
+#define BALDA_STR_MENU_DIFFICULTY "Уровень сложности"
+#define BALDA_STR_MENU_DIFFICULTY_EASY "Легко"
+#define BALDA_STR_MENU_DIFFICULTY_NORMAL "Нормально"
+#define BALDA_STR_MENU_DIFFICULTY_HARD "Сложно"
+
 #define BALDA_STR_MENU_ABOUT "Об игре"
 #define BALDA_STR_MENU_EXIT "Выход"
 #endif

@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <time.h>
+#include <math.h>
 
 // for text encoding functions
 #include <inkview.h>
@@ -47,8 +48,13 @@ typedef struct
 
 typedef struct
 {
+	balda_bool find_best;
+	
 	balda_sequence_t current_sequence;
 	balda_sequence_t best_sequence;
+	balda_sequence_t found_sequences[BALDA_MAX_SEQUENCE-1];
+	int total_found_sequences_count;
+	
 	balda_field_cell_t field[BALDA_FIELD_WIDTH][BALDA_FIELD_HEIGHT];
 } balda_ai_search_context_t;
 
@@ -56,6 +62,7 @@ struct balda_t_impl
 {
 	BALDA_STATE state;
 	BALDA_GAME_TYPE game_type;
+	BALDA_GAME_DIFFICULTY game_difficulty;
 	
 	balda_char initial_word[BALDA_FIELD_WIDTH+1];
 	balda_field_cell_t field[BALDA_FIELD_WIDTH][BALDA_FIELD_HEIGHT];
@@ -218,6 +225,7 @@ balda_t* balda_init(void)
 	balda_t* balda = (balda_t*)malloc(sizeof(balda_t));
 	
 	balda->state = BALDA_STATE_NONE;
+	balda->game_difficulty = BALDA_GAME_DIFFICULTY_NORMAL;
 	
 	// reset player names
 	balda->player_names[0][0] = 0;
@@ -236,6 +244,11 @@ void balda_free(balda_t* balda)
 	
 	balda_dict_free(&balda->dict);
 	free(balda);
+}
+
+void balda_set_game_difficulty(balda_t* balda, BALDA_GAME_DIFFICULTY game_difficulty)
+{
+	balda->game_difficulty = game_difficulty;
 }
 
 BALDA_SEQUENCE_START_RESULT balda_turn_sequence_start(balda_t* balda,
@@ -498,12 +511,28 @@ void balda_ai_find_best_word_callback(balda_t* balda,
 		// if current sequence forms a word
 		if (e.ends_here)
 		{
-			// longer word was found
-			if (local_sequence->length > context->current_sequence.length
-				&& balda_sequence_contains_point(local_sequence, local_sequence->insert_pos.x, local_sequence->insert_pos.y)
-				&& !balda_was_word_used(balda, local_sequence->word))
+			if (context->find_best)
 			{
-				balda_sequence_copy(&context->current_sequence, local_sequence);
+				// longer word was found
+				if (local_sequence->length > context->current_sequence.length
+					&& balda_sequence_contains_point(local_sequence, local_sequence->insert_pos.x, local_sequence->insert_pos.y)
+					&& !balda_was_word_used(balda, local_sequence->word))
+				{
+					balda_sequence_copy(&context->current_sequence, local_sequence);
+				}
+			}
+			else
+			{
+				if (local_sequence->length >=2
+					&& !context->found_sequences[local_sequence->length-2].length
+					&& balda_sequence_contains_point(local_sequence, local_sequence->insert_pos.x, local_sequence->insert_pos.y)
+					&& !balda_was_word_used(balda, local_sequence->word))
+				{
+					// no sequence of this length was previously found
+					// remember sequence of this length
+					balda_sequence_copy(&context->found_sequences[local_sequence->length-2], local_sequence);
+					++context->total_found_sequences_count;
+				}
 			}
 		}
 		
@@ -594,10 +623,23 @@ void balda_make_ai_turn(balda_t* balda)
 	
 	//balda_char word[BALDA_MAX_SEQUENCE];
 	
+	balda->ai_search_context.find_best = (balda->game_difficulty == BALDA_GAME_DIFFICULTY_HARD);
+	
 	// make a copy of field for faster access (due to insert char)
 	memcpy(&balda->ai_search_context.field, &balda->field, sizeof(balda->field));
 	// reset best sequence
 	balda_sequence_reset(&balda->ai_search_context.best_sequence);
+	
+	if (!balda->ai_search_context.find_best)
+	{
+		// reset all found sequences
+		int i;
+		for (i=0; i<BALDA_MAX_SEQUENCE-1; ++i)
+		{
+			balda_sequence_reset(&balda->ai_search_context.found_sequences[i]);
+		}
+		balda->ai_search_context.total_found_sequences_count = 0;
+	}
 	
 	// loop through all cells suitable for inserting
 	// random loop order
@@ -605,26 +647,26 @@ void balda_make_ai_turn(balda_t* balda)
 	if (rand() % 2)
 	{
 		x0 = 0;
-		xm = BALDA_FIELD_WIDTH-1;
+		xm = BALDA_FIELD_WIDTH;
 		dx = 1;
 	}
 	else
 	{
 		x0 = BALDA_FIELD_WIDTH-1;
-		xm = 0;
+		xm = -1;
 		dx = -1;
 	}
 	
 	if (rand() % 2)
 	{
 		y0 = 0;
-		ym = BALDA_FIELD_HEIGHT-1;
+		ym = BALDA_FIELD_HEIGHT;
 		dy = 1;
 	}
 	else
 	{
 		y0 = BALDA_FIELD_HEIGHT-1;
-		ym = 0;
+		ym = -1;
 		dy = -1;
 	}
 	
@@ -653,14 +695,17 @@ void balda_make_ai_turn(balda_t* balda)
 					// now loop through all possible words
 					balda_ai_find_best_word(balda, &balda->dict);
 					
-					// longer word was found
-					if (balda->ai_search_context.current_sequence.length > balda->ai_search_context.best_sequence.length)
+					if (balda->ai_search_context.find_best)
 					{
-						debug_printf((" word found, length: %d", balda->ai_search_context.current_sequence.length));
-						//debug_printf((" insert_char: %d", balda->ai_search_context.current_sequence.insert_char));
-						
-						balda_sequence_copy(&balda->ai_search_context.best_sequence,
-							&balda->ai_search_context.current_sequence);
+						// longer word was found
+						if (balda->ai_search_context.current_sequence.length > balda->ai_search_context.best_sequence.length)
+						{
+							debug_printf((" word found, length: %d", balda->ai_search_context.current_sequence.length));
+							//debug_printf((" insert_char: %d", balda->ai_search_context.current_sequence.insert_char));
+							
+							balda_sequence_copy(&balda->ai_search_context.best_sequence,
+								&balda->ai_search_context.current_sequence);
+						}
 					}
 					
 					balda->ai_search_context.field[x][y].letter = BALDA_CHAR_NONE;
@@ -669,6 +714,81 @@ void balda_make_ai_turn(balda_t* balda)
 		}
 	}
 	
+	debug_printf(("total_found_sequences_count: %d", balda->ai_search_context.total_found_sequences_count));
+	if (!balda->ai_search_context.find_best)
+	{
+		int found_count = balda->ai_search_context.total_found_sequences_count;
+		
+		if (found_count)
+		{
+			/*double n = rand_normal_with_interval(3.0);
+			debug_printf(("rand_normal: %f", n));
+			
+			if (balda->game_difficulty == BALDA_GAME_DIFFICULTY_EASY)
+			{
+				n = fabs(n - 0.5) * 2.0;
+			}
+			
+			int index = n * (double)(balda->ai_search_context.total_found_sequences_count);
+			if (index == balda->ai_search_context.total_found_sequences_count)
+				index = balda->ai_search_context.total_found_sequences_count-1;
+			
+			debug_printf(("index: %d", index));*/
+			
+			int index = 0;
+			
+			if (found_count > 1)
+			{
+				if (balda->game_difficulty == BALDA_GAME_DIFFICULTY_EASY)
+				{
+					int rnd = (rand() % 100);
+					
+					if (rnd <= 75)
+						index = rand() % (found_count / 2);
+					else if (rnd <= 95)
+						index = found_count / 2;
+					else
+						index = found_count / 2 + rand() % (found_count / 2);
+				}
+				else if (balda->game_difficulty == BALDA_GAME_DIFFICULTY_NORMAL)
+				{
+					int rnd = (rand() % 100);
+					
+					if (rnd <= 85)
+					{
+						index = found_count / 2;
+					}
+					else if (rnd <= 90)
+						index = rand() % (found_count / 2);
+					else
+						index = found_count / 2 + rand() % (found_count / 2);
+				}
+			}
+				
+			debug_printf(("index: %d", index));
+			
+			int i;
+			for (i=0; i<BALDA_MAX_SEQUENCE-1; ++i)
+			{
+				if (balda->ai_search_context.found_sequences[i].length)
+				{
+					if (index == 0)
+					{
+						// found
+						balda_sequence_copy(&balda->ai_search_context.best_sequence,
+							&balda->ai_search_context.found_sequences[i]);
+						break;
+					}
+					else
+					{
+						--index;
+					}
+				}
+			}
+		}
+	}
+	
+	debug_printf(("best_sequence.length: %d", balda->ai_search_context.best_sequence.length));
 	if (balda->ai_search_context.best_sequence.length)
 	{
 		// word was found

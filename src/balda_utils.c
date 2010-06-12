@@ -20,6 +20,8 @@
 
 #include "balda_utils.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 
 const char* balda_itoa(balda_int_converter_t* converter, int value)
 {
@@ -39,3 +41,42 @@ int balda_point_distance_squared(int x1, int y1, int x2, int y2)
 {
 	return BALDA_SQR(x2 - x1) + BALDA_SQR(y2 - y1);
 }
+/*
+double rand_uniform()
+{
+	return (double)(rand()) / (double)(RAND_MAX);
+}
+
+double rand_normal()
+{
+	static double stored = -1;
+	
+	if (stored < 0)
+	{
+		double u = rand_uniform();
+		double v = rand_uniform();
+		
+		double x = sqrt(-2 * log(u)) * cos(2 * M_PI * v);
+		stored = sqrt(-2 * log(u)) * sin(2 * M_PI * v);
+		
+		return x;
+	}
+	else
+	{
+		double x = stored;
+		stored = -1;
+		return x;
+	}
+}
+
+double rand_normal_with_interval(double interval)
+{
+	double n = rand_normal();
+	if (n < -interval)
+		n = -interval;
+	else if (n > interval)
+		n = interval;
+	
+	return (n + interval) / (interval + interval);
+}
+*/
